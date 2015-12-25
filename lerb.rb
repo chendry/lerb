@@ -56,13 +56,30 @@ class LERB
   end
 
   def run
-    puts nonce
+    register("email@example.com")
+  end
+
+  def register(email)
+    execute URI(directory["new-reg"]),
+      "resource": "new-reg",
+      "contact": [ "mailto:#{email}" ]
   end
 
   private
 
     def directory
       @directory ||= JSON.parse(open(@uri.to_s).read)
+    end
+
+    def execute(uri, payload)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      http.set_debug_output(STDOUT)
+
+      request = Net::HTTP::Post.new(uri.request_uri)
+      request.body = JWS.new(@key, nonce, payload.to_json).build
+
+      http.request(request)
     end
 
     def nonce
