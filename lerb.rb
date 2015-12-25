@@ -16,7 +16,7 @@ module LERB
     end
 
     def run
-      new_authorization("example.com")
+      JWKThumbprint.new(@key).build
     end
 
     def new_registration(email)
@@ -132,6 +132,22 @@ module LERB
           }
         }.to_json
       end
+  end
+
+  class JWKThumbprint
+    def initialize(key)
+      @key = key
+    end
+
+    def build
+      jwk = {
+        e: Helper.b64(Helper.number_to_bytes(@key.params["n"])),
+        kty: "RSA",
+        n: Helper.b64(Helper.number_to_bytes(@key.params["n"]))
+      }.to_json
+
+      Helper.b64(OpenSSL::Digest::SHA256.digest(jwk))
+    end
   end
 
 end
