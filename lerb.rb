@@ -16,7 +16,7 @@ module LERB
     end
 
     def run
-      agree_to_tos!
+      new_authorization("example.com")
     end
 
     def new_registration(email)
@@ -31,6 +31,15 @@ module LERB
       execute registration_uri,
         "resource": "reg",
         "agreement": registration.links["terms-of-service"]
+    end
+
+    def new_authorization(domain)
+      execute directory["new-authz"],
+        resource: "new-authz",
+        "identifier": {
+          "type": "dns",
+          "value": domain
+        }
     end
 
     private
