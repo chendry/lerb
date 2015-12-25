@@ -16,7 +16,7 @@ module LERB
     end
 
     def run
-      puts KeyAuthorization.new(@account_key).build("abc123")
+      puts "hello, world"
     end
 
     def new_registration(email)
@@ -40,6 +40,12 @@ module LERB
           type: "dns",
           value: domain
         }
+    end
+
+    def new_cert(csr)
+      execute directory["new-cert"],
+        resource: "new-cert",
+        csr: Helper.b64(File.read(csr))
     end
 
     private
