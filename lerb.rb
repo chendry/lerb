@@ -90,6 +90,16 @@ module LERB
     end
   end
 
+  class Helper
+    def self.b64(bin)
+      Base64.urlsafe_encode64(bin).gsub(/=+$/, "")
+    end
+
+    def self.number_to_bytes(n)
+      n.to_s(16).scan(/../).collect(&:hex).pack("C*")
+    end
+  end
+
   class JWS
     def initialize(key, nonce, payload)
       @key = key
@@ -104,15 +114,11 @@ module LERB
     private
 
       def signing_input
-        b64(header) + "." + b64(@payload)
+        Helper.b64(header) + "." + Helper.b64(@payload)
       end
 
       def signature
-        b64(@key.sign(OpenSSL::Digest::SHA256.new, signing_input))
-      end
-
-      def b64(bin)
-        Base64.urlsafe_encode64(bin).gsub(/=+$/, "")
+        Helper.b64(@key.sign(OpenSSL::Digest::SHA256.new, signing_input))
       end
 
       def header
@@ -121,14 +127,10 @@ module LERB
           nonce: @nonce,
           jwk: {
             kty: "RSA",
-            n: b64(number_to_bytes(@key.params["n"])),
-            e: b64(number_to_bytes(@key.params["e"]))
+            n: Helper.b64(Helper.number_to_bytes(@key.params["n"])),
+            e: Helper.b64(Helper.number_to_bytes(@key.params["e"]))
           }
         }.to_json
-      end
-
-      def number_to_bytes(n)
-        n.to_s(16).scan(/../).collect(&:hex).pack("C*")
       end
   end
 
