@@ -21,24 +21,24 @@ module LERB
 
     def new_registration(email)
       execute directory["new-reg"],
-        "resource": "new-reg",
-        "contact": [ "mailto:#{email}" ]
+        resource: "new-reg",
+        contact: [ "mailto:#{email}" ]
     end
 
     def agree_to_tos!
       registration = execute(registration_uri, resource: "reg")
 
       execute registration_uri,
-        "resource": "reg",
-        "agreement": registration.links["terms-of-service"]
+        resource: "reg",
+        agreement: registration.links["terms-of-service"]
     end
 
     def new_authorization(domain)
       execute directory["new-authz"],
         resource: "new-authz",
-        "identifier": {
-          "type": "dns",
-          "value": domain
+        identifier: {
+          type: "dns",
+          value: domain
         }
     end
 
