@@ -12,11 +12,11 @@ module LERB
   class Client
     def initialize(uri, key)
       @uri = URI(uri)
-      @key = OpenSSL::PKey::RSA.new(File.read(key))
+      @account_key = AccountKey.new(OpenSSL::PKey::RSA.new(File.read(key)))
     end
 
     def run
-      JWKThumbprint.new(@key).build
+      puts JWKThumbprint.new(@account_key).build
     end
 
     def new_registration(email)
@@ -55,7 +55,7 @@ module LERB
         http.set_debug_output(STDOUT)
 
         request = Net::HTTP::Post.new(uri.request_uri)
-        request.body = LERB::JWS.new(@key, nonce, payload.to_json).build
+        request.body = LERB::JWS.new(@account_key, nonce, payload.to_json).build
 
         LERB::Response.new(http.request(request))
       end
@@ -100,9 +100,27 @@ module LERB
     end
   end
 
-  class JWS
-    def initialize(key, nonce, payload)
+  class AccountKey
+    def initialize(key)
       @key = key
+    end
+
+    def n_b64
+      Helper.b64(Helper.number_to_bytes(@key.params["n"]))
+    end
+
+    def e_b64
+      Helper.b64(Helper.number_to_bytes(@key.params["e"]))
+    end
+
+    def sign(input)
+      @key.sign(OpenSSL::Digest::SHA256.new, input)
+    end
+  end
+
+  class JWS
+    def initialize(account_key, nonce, payload)
+      @account_key = account_key
       @nonce = nonce
       @payload = payload
     end
@@ -118,7 +136,7 @@ module LERB
       end
 
       def signature
-        Helper.b64(@key.sign(OpenSSL::Digest::SHA256.new, signing_input))
+        Helper.b64(@account_key.sign(signing_input))
       end
 
       def header
@@ -127,23 +145,23 @@ module LERB
           nonce: @nonce,
           jwk: {
             kty: "RSA",
-            n: Helper.b64(Helper.number_to_bytes(@key.params["n"])),
-            e: Helper.b64(Helper.number_to_bytes(@key.params["e"]))
+            n: @account_key.n_b64,
+            e: @account_key.e_b64
           }
         }.to_json
       end
   end
 
   class JWKThumbprint
-    def initialize(key)
-      @key = key
+    def initialize(account_key)
+      @account_key = account_key
     end
 
     def build
       jwk = {
-        e: Helper.b64(Helper.number_to_bytes(@key.params["n"])),
+        e: @account_key.e_b64,
         kty: "RSA",
-        n: Helper.b64(Helper.number_to_bytes(@key.params["n"]))
+        n: @account_key.n_b64
       }.to_json
 
       Helper.b64(OpenSSL::Digest::SHA256.digest(jwk))
