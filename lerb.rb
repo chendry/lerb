@@ -16,7 +16,7 @@ module LERB
     end
 
     def run
-      new_authorization("example.com")
+      puts KeyAuthorization.new(@account_key).build("abc123")
     end
 
     def new_registration(email)
@@ -148,20 +148,26 @@ module LERB
       end
   end
 
-  class JWKThumbprint
+  class KeyAuthorization
     def initialize(account_key)
       @account_key = account_key
     end
 
-    def build
-      jwk = {
-        e: @account_key.e_b64,
-        kty: "RSA",
-        n: @account_key.n_b64
-      }.to_json
-
-      Helper.b64(OpenSSL::Digest::SHA256.digest(jwk))
+    def build(token)
+      token + "." + Helper.b64(jwk_thumbprint)
     end
+
+    private
+
+      def jwk_thumbprint
+        jwk = {
+          e: @account_key.e_b64,
+          kty: "RSA",
+          n: @account_key.n_b64
+        }.to_json
+
+        OpenSSL::Digest::SHA256.digest(jwk)
+      end
   end
 
 end
