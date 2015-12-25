@@ -16,7 +16,7 @@ module LERB
     end
 
     def run
-      puts JWKThumbprint.new(@account_key).build
+      new_authorization("example.com")
     end
 
     def new_registration(email)
@@ -113,8 +113,8 @@ module LERB
       Helper.b64(Helper.number_to_bytes(@key.params["e"]))
     end
 
-    def sign(input)
-      @key.sign(OpenSSL::Digest::SHA256.new, input)
+    def sign_and_b64(input)
+      Helper.b64(@key.sign(OpenSSL::Digest::SHA256.new, input))
     end
   end
 
@@ -126,17 +126,13 @@ module LERB
     end
 
     def build
-      "#{signing_input}.#{signature}"
+      signing_input + "." + @account_key.sign_and_b64(signing_input)
     end
 
     private
 
       def signing_input
         Helper.b64(header) + "." + Helper.b64(@payload)
-      end
-
-      def signature
-        Helper.b64(@account_key.sign(signing_input))
       end
 
       def header
