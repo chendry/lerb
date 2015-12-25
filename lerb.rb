@@ -2,6 +2,8 @@
 
 require 'uri'
 require 'openssl'
+require 'open-uri'
+require 'json'
 
 class LERB
   def initialize(uri, key)
@@ -10,8 +12,14 @@ class LERB
   end
 
   def run
-    puts "hello, world"
+    puts directory.inspect
   end
+
+  private
+
+    def directory
+      @directory ||= JSON.parse(open(@uri.to_s).read)
+    end
 end
 
 LERB.new("https://acme-staging.api.letsencrypt.org/directory", "./test-key").run
