@@ -20,7 +20,7 @@ module LERB
     end
 
     def new_registration(email)
-      execute URI(directory["new-reg"]),
+      execute directory["new-reg"],
         "resource": "new-reg",
         "contact": [ "mailto:#{email}" ]
     end
