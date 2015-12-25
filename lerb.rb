@@ -16,13 +16,21 @@ module LERB
     end
 
     def run
-      new_registration("email@example.com")
+      agree_to_tos!
     end
 
     def new_registration(email)
       execute URI(directory["new-reg"]),
         "resource": "new-reg",
         "contact": [ "mailto:#{email}" ]
+    end
+
+    def agree_to_tos!
+      registration = execute(registration_uri, resource: "reg")
+
+      execute registration_uri,
+        "resource": "reg",
+        "agreement": registration.links["terms-of-service"]
     end
 
     private
@@ -32,14 +40,15 @@ module LERB
       end
 
       def execute(uri, payload)
+        uri = URI(uri)
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = true
         http.set_debug_output(STDOUT)
 
         request = Net::HTTP::Post.new(uri.request_uri)
-        request.body = JWS.new(@key, nonce, payload.to_json).build
+        request.body = LERB::JWS.new(@key, nonce, payload.to_json).build
 
-        http.request(request)
+        LERB::Response.new(http.request(request))
       end
 
       def nonce
@@ -50,6 +59,26 @@ module LERB
           h.request(Net::HTTP::Head.new(@uri))["Replay-Nonce"]
         end
       end
+
+      def registration_uri
+        @registration_uri ||= execute(directory["new-reg"], resource: "new-reg").location
+      end
+  end
+
+  class Response
+    def initialize(response)
+      @response = response
+    end
+
+    def location
+      @response["Location"]
+    end
+
+    def links
+      if links = @response["Link"]
+        Hash[links.scan(/\<(.+?)\>\;rel="(.+?)"/)].invert
+      end
+    end
   end
 
   class JWS
