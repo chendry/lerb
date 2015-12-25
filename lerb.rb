@@ -5,6 +5,7 @@ require 'openssl'
 require 'open-uri'
 require 'json'
 require 'base64'
+require 'net/http'
 
 class JWS
   def initialize(key, nonce, payload)
@@ -55,13 +56,22 @@ class LERB
   end
 
   def run
-		puts JWS.new(@key, "1234", "payload").build
+    puts nonce
   end
 
   private
 
     def directory
       @directory ||= JSON.parse(open(@uri.to_s).read)
+    end
+
+    def nonce
+      http = Net::HTTP.new(@uri.host, @uri.port)
+      http.use_ssl = true
+
+      http.start do |h|
+        h.request(Net::HTTP::Head.new(@uri))["Replay-Nonce"]
+      end
     end
 end
 
