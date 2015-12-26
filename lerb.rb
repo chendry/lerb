@@ -111,16 +111,16 @@ module LERB
       @key = key
     end
 
-    def n_b64
-      Helper.b64(Helper.number_to_bytes(@key.params["n"]))
+    def jwk
+      {
+        e: Helper.b64(Helper.number_to_bytes(@key.params["e"])),
+        kty: "RSA",
+        n: Helper.b64(Helper.number_to_bytes(@key.params["n"]))
+      }
     end
 
-    def e_b64
-      Helper.b64(Helper.number_to_bytes(@key.params["e"]))
-    end
-
-    def sign_and_b64(input)
-      Helper.b64(@key.sign(OpenSSL::Digest::SHA256.new, input))
+    def sign(input)
+      @key.sign(OpenSSL::Digest::SHA256.new, input)
     end
   end
 
@@ -132,7 +132,7 @@ module LERB
     end
 
     def build
-      signing_input + "." + @account_key.sign_and_b64(signing_input)
+      signing_input + "." + Helper.b64(@account_key.sign(signing_input))
     end
 
     private
@@ -145,11 +145,7 @@ module LERB
         {
           alg: "RS256",
           nonce: @nonce,
-          jwk: {
-            kty: "RSA",
-            n: @account_key.n_b64,
-            e: @account_key.e_b64
-          }
+          jwk: @account_key.jwk
         }.to_json
       end
   end
@@ -166,13 +162,7 @@ module LERB
     private
 
       def jwk_thumbprint
-        jwk = {
-          e: @account_key.e_b64,
-          kty: "RSA",
-          n: @account_key.n_b64
-        }.to_json
-
-        OpenSSL::Digest::SHA256.digest(jwk)
+        OpenSSL::Digest::SHA256.digest(@account_key.jwk.to_json)
       end
   end
 
