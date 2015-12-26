@@ -7,6 +7,7 @@ require 'json'
 require 'base64'
 require 'net/http'
 require 'optparse'
+require 'forwardable'
 
 module LERB
 
@@ -15,120 +16,159 @@ module LERB
       klass = case args.shift
         when "new-reg" then LERB::Commands::NewReg
         when "new-authz" then LERB::Commands::NewAuthz
-        when "challenge" then LERB::Comands::Challenge
+        when "challenge" then LERB::Commands::Challenge
         when "authz" then LERB::Commands::Authz
         when "new-cert" then LERB::Commands::NewCert
         when "cert" then LERB::Commands::Cert
         else LERB::Commands::Help
       end
 
-      options = klass::Options.new(args)
-
-      if options.valid?
-        klass.new.run(options)
-      else
-        options.show_help
-      end
+      command = klass.new
+      command.execute(args)
     end
   end
 
-  module Commands
-    class BaseOptions
-      def initialize(args)
-        @options = { }
+  class MyOptionParser
+    extend Forwardable
 
-        @opt_parser = OptionParser.new do |opts|
-          add_common_options(opts)
-          add_command_options(opts)
+    def initialize
+      @required = [ ]
+      @parser = OptionParser.new
+      @options = { }
+    end
 
-          opts.on "--help" do
-            show_help
-          end
+    def show_help
+      puts @parser
+    end
+
+    def_delegators :@parser, :banner=, :separator, :on
+
+    def opt(short, long, *args)
+      add_option(short, long, *args)
+    end
+
+    def req(short, long, *args)
+      add_option(short, long, *args)
+      @required << long
+    end
+
+    def parse(args)
+      @parser.parse(args)
+
+      if missing.any?
+        puts "missing arguments: #{missing.join(", ")}"
+        puts @parser
+        exit 1
+      end
+
+      Hash[
+        @options.map do |k, v|
+          [ k.gsub(/^--/, '').gsub('-','_').gsub(/=.*/, '').to_sym, v ]
         end
+      ]
+    end
 
-        @opt_parser.parse(args)
+    private
+
+      def add_option(short, long, *args)
+        @parser.on short, long, *args do |v|
+          @options[long] = v
+        end
       end
 
-      def [](key)
-        @options[key]
+      def missing
+        @required - @options.keys
       end
+  end
 
-      def show_help
-        puts @opt_parser
+  module Commands
+    class Base
+      def execute(args)
+        @options = MyOptionParser.new
+        build_options(@options)
+        run(@options.parse(args))
       end
 
       private
 
-        def add_common_options(opts)
-          opts.separator ""
-          opts.separator "common options:"
+        def add_common_options(o)
+          o.req "-k", "--account-key=PATH", "private RSA key used for authentication"
+          o.opt "-j", "--json", "output JSON responses from server"
+          o.opt "-s", "--script", "output script-friendly export commands"
 
-          opts.on "-k", "--account-key=PATH", "RSA private key used for authentication" do |v|
-            @options[:account_key] = v
+          o.on "--version", "print version number" do
+            puts "0.0.1"
+            exit
           end
 
-          opts.on "-j", "--json-output", "output JSON responses from ACME server" do |v|
-            @options[:json_output] = true
-          end
-
-          opts.on "-s", "--script-output", "output script-friendly export commands" do |v|
-            @options[:script_output] = true
+          o.on "--help", "display this message" do
+            @options.show_help
+            exit
           end
         end
     end
 
-    class Help
-      class Options < BaseOptions
-        def valid?
-          true
-        end
-
-        private
-
-          def add_command_options(opts)
-            opts.banner = "usage: lerb.rb command [options]"
-            opts.separator "  commands: new-reg, new-authz, challenge, authz, new-cert, cert"
-          end
-      end
-
+    class Help < Base
       def run(options)
-        options.show_help
       end
+
+      private
+
+        def build_options(o)
+          o.banner = "usage: lerb.rb command [options]"
+          o.separator "  commands: new-reg, new-authz, challenge, authz, new-cert, cert"
+          add_common_options(o)
+        end
     end
 
-    class NewReg
-      class Options < BaseOptions
-        def valid?
-          unless @options[:account_key]
-            puts "error: --account-key is required"
-            return false
-          end
-
-          unless @options[:email]
-            puts "error: --email is required"
-            return false
-          end
-
-          true
-        end
-
-        private
-
-          def add_command_options(opts)
-            opts.banner = "usage: lerb.rb new-reg [options]"
-
-            opts.separator ""
-            opts.separator "new-reg command options:"
-
-            opts.on "-e", "--email=EMAIL", "email address to use for registration" do |v|
-              @options[:email] = v
-            end
-          end
-      end
-
+    class NewReg < Base
       def run(options)
-        puts "running with: account_key=#{options[:account_key]}, email=#{options[:email]}"
+        puts options.inspect
       end
+
+      private
+
+        def build_options(o)
+          o.banner = "usage: lerb.rb new-req [options]"
+          add_common_options(o)
+          o.separator ""
+          o.separator "new-req command options:"
+          o.req "-e", "--email=EMAIL" , "email address to use for registration"
+        end
+    end
+
+    class NewAuthz < Base
+      def run(options)
+        puts options.inspect
+      end
+
+      private
+
+        def build_options(o)
+          o.banner = "usage: lerb.rb new-authz [options]"
+          add_common_options(o)
+          o.separator ""
+          o.separator "new-authz command options:"
+          o.req "-d", "--domain=DOMAIN", "domain name for which to request authorization"
+        end
+    end
+
+    class Challenge < Base
+      def run(options)
+        puts options.inspect
+      end
+
+      private
+
+        def build_options(o)
+          o.banner = "usage: lerb.rb challenge [options]"
+          add_common_options(o)
+          o.separator ""
+          o.separator "challenge command options:"
+          o.req "-t", "--type=TYPE", "type of challenge"
+          o.req "-u", "--uri=URI", "challenge URI"
+          o.req "-T", "--token=TOKEN", "challenge token"
+        end
     end
   end
 
