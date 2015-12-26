@@ -6,17 +6,136 @@ require 'open-uri'
 require 'json'
 require 'base64'
 require 'net/http'
+require 'optparse'
 
 module LERB
+
+  class CLI
+    def self.run(args)
+      klass = case args.shift
+        when "new-reg" then LERB::Commands::NewReg
+        when "new-authz" then LERB::Commands::NewAuthz
+        when "challenge" then LERB::Comands::Challenge
+        when "authz" then LERB::Commands::Authz
+        when "new-cert" then LERB::Commands::NewCert
+        when "cert" then LERB::Commands::Cert
+        else LERB::Commands::Help
+      end
+
+      options = klass::Options.new(args)
+
+      if options.valid?
+        klass.new.run(options)
+      else
+        options.show_help
+      end
+    end
+  end
+
+  module Commands
+    class BaseOptions
+      def initialize(args)
+        @options = { }
+
+        @opt_parser = OptionParser.new do |opts|
+          add_common_options(opts)
+          add_command_options(opts)
+
+          opts.on "--help" do
+            show_help
+          end
+        end
+
+        @opt_parser.parse(args)
+      end
+
+      def [](key)
+        @options[key]
+      end
+
+      def show_help
+        puts @opt_parser
+      end
+
+      private
+
+        def add_common_options(opts)
+          opts.separator ""
+          opts.separator "common options:"
+
+          opts.on "-k", "--account-key=PATH", "RSA private key used for authentication" do |v|
+            @options[:account_key] = v
+          end
+
+          opts.on "-j", "--json-output", "output JSON responses from ACME server" do |v|
+            @options[:json_output] = true
+          end
+
+          opts.on "-s", "--script-output", "output script-friendly export commands" do |v|
+            @options[:script_output] = true
+          end
+        end
+    end
+
+    class Help
+      class Options < BaseOptions
+        def valid?
+          true
+        end
+
+        private
+
+          def add_command_options(opts)
+            opts.banner = "usage: lerb.rb command [options]"
+            opts.separator "  commands: new-reg, new-authz, challenge, authz, new-cert, cert"
+          end
+      end
+
+      def run(options)
+        options.show_help
+      end
+    end
+
+    class NewReg
+      class Options < BaseOptions
+        def valid?
+          unless @options[:account_key]
+            puts "error: --account-key is required"
+            return false
+          end
+
+          unless @options[:email]
+            puts "error: --email is required"
+            return false
+          end
+
+          true
+        end
+
+        private
+
+          def add_command_options(opts)
+            opts.banner = "usage: lerb.rb new-reg [options]"
+
+            opts.separator ""
+            opts.separator "new-reg command options:"
+
+            opts.on "-e", "--email=EMAIL", "email address to use for registration" do |v|
+              @options[:email] = v
+            end
+          end
+      end
+
+      def run(options)
+        puts "running with: account_key=#{options[:account_key]}, email=#{options[:email]}"
+      end
+    end
+  end
 
   class Client
     def initialize(uri, key)
       @uri = URI(uri)
       @account_key = AccountKey.new(OpenSSL::PKey::RSA.new(File.read(key)))
-    end
-
-    def run
-      puts "hello, world"
     end
 
     def new_registration(email)
@@ -168,4 +287,5 @@ module LERB
 
 end
 
-LERB::Client.new("https://acme-staging.api.letsencrypt.org/directory", "./test-key").run
+# LERB::Client.new("https://acme-staging.api.letsencrypt.org/directory", "./test-key").run
+LERB::CLI.run(ARGV)
