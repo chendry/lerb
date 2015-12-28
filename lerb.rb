@@ -119,7 +119,9 @@ module LERB
     class Base
       def run(args)
         options_hash = parse_arguments(args)
-        run_with_options(options_hash)
+        uri = "https://acme-staging.api.letsencrypt.org/directory"
+        client = LERB::Client.new(uri, options_hash[:account_key])
+        run_with_options(client, options_hash)
       end
 
       private
@@ -144,7 +146,7 @@ module LERB
         p.add_req "--email=EMAIL" , "email address to use for registration"
       end
 
-      def run_with_options(options)
+      def run_with_options(client, options)
         puts options.inspect
       end
     end
@@ -154,7 +156,7 @@ module LERB
         p.add_req "--domain=DOMAIN", "domain name for which to request authorization"
       end
 
-      def run_with_options(options)
+      def run_with_options(client, options)
         puts options.inspect
       end
     end
@@ -166,7 +168,7 @@ module LERB
         p.add_req "--token=TOKEN", "challenge token"
       end
 
-      def run_with_options(options)
+      def run_with_options(client, options)
         puts options.inspect
       end
     end
@@ -175,7 +177,7 @@ module LERB
       def add_common_options(p)
       end
 
-      def run_with_options(options)
+      def run_with_options(client, options)
         puts options.inspect
       end
     end
@@ -184,7 +186,7 @@ module LERB
       def add_common_options(p)
       end
 
-      def run_with_options(options)
+      def run_with_options(client, options)
         puts options.inspect
       end
     end
