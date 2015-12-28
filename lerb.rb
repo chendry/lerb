@@ -121,7 +121,8 @@ module LERB
         options_hash = parse_arguments(args)
         uri = "https://acme-staging.api.letsencrypt.org/directory"
         client = LERB::Client.new(uri, options_hash[:account_key])
-        run_with_options(client, options_hash)
+        response = run_with_options(client, options_hash)
+        output_response(options_hash, response)
       end
 
       private
@@ -139,6 +140,26 @@ module LERB
         def command_name
           self.class.name.split("::").last.split(/(?=[A-Z])/).join("-").downcase
         end
+
+        def output_response(options_hash, response)
+          if options_hash[:json]
+            output_response_json(response)
+          elsif options_hash[:script]
+            output_response_script(response)
+          else
+            output_response_human(response)
+          end
+        end
+
+        def output_response_json(response)
+          output = {
+            headers: response.headers,
+            links: response.links,
+            body: JSON.parse(response.body)
+          }
+
+          puts output.to_json
+        end
     end
 
     class NewReg < Base
@@ -147,7 +168,7 @@ module LERB
       end
 
       def run_with_options(client, options)
-        puts options.inspect
+        client.new_registration(options[:email])
       end
     end
 
@@ -268,6 +289,14 @@ module LERB
       @response["Location"]
     end
 
+    def body
+      @response.body
+    end
+
+    def headers
+      @response.to_hash
+    end
+
     def links
       if links = @response["Link"]
         Hash[links.scan(/\<(.+?)\>\;rel="(.+?)"/)].invert
@@ -347,5 +376,4 @@ module LERB
 
 end
 
-# LERB::Client.new("https://acme-staging.api.letsencrypt.org/directory", "./test-key").run
 LERB::CLI.run(ARGV)
