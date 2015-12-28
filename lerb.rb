@@ -67,7 +67,7 @@ module LERB
 
     def add_opt(long, *args)
       @parser.on long, *args do |v|
-        @options[long_to_key(long)] = v
+        @options[long] = v
       end
     end
 
@@ -124,8 +124,8 @@ module LERB
         parser.separator ""
         parser.separator "#{command_name} command options"
         add_command_options(parser)
-        parser.parse!(args)
-        run_with_options(parser.options_hash)
+        options_hash = parser.parse!(args)
+        run_with_options(options_hash)
       end
 
       private
