@@ -9,6 +9,13 @@ require 'net/http'
 require 'optparse'
 require 'forwardable'
 
+class String
+  def unindent
+    gsub(/^#{match(/^\s+/)}/, "")
+  end
+end
+
+
 module LERB
 
   class CLI
@@ -170,6 +177,29 @@ module LERB
       def run_with_options(client, options)
         client.new_registration(options[:email])
       end
+
+      def output_response_human(response)
+        case response.code
+          when "201" then human_response_created(response)
+          when "409" then human_response_conflict(response)
+        end
+      end
+
+      private
+
+        def human_response_created(response)
+          puts <<-END.unindent
+            Created.
+            Registration URL: #{response.location}
+          END
+        end
+
+        def human_response_conflict(response)
+          puts <<-END.unindent
+            Conflict.  (Key associated with existing registration.)
+            Registration URL: #{response.location}
+          END
+        end
     end
 
     class NewAuthz < Base
@@ -283,6 +313,10 @@ module LERB
   class Response
     def initialize(response)
       @response = response
+    end
+
+    def code
+      @response.code
     end
 
     def location
