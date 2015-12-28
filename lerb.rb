@@ -22,6 +22,7 @@ module LERB
     def self.run(args)
       command = case command_name = args.shift
         when "new-reg" then LERB::Commands::NewReg.new
+        when "reg" then LERB::Commands::Reg.new
         when "new-authz" then LERB::Commands::NewAuthz.new
         when "challenge" then LERB::Commands::Challenge.new
         when "new-cert" then LERB::Commands::NewCert.new
@@ -115,7 +116,7 @@ module LERB
       def run(args)
         o = MyOptionParser.new
         o.banner = "usage: lerb.rb command [options]"
-        o.separator "  commands: new-reg, new-authz, challenge, new-cert, cert"
+        o.separator "  commands: new-reg, reg, new-authz, challenge, new-cert, cert"
         o.add_common_options
 
         puts @error if @error
@@ -171,11 +172,13 @@ module LERB
 
     class NewReg < Base
       def add_command_options(p)
-        p.add_req "--email=EMAIL" , "email address to use for registration"
+        p.add_opt "--email=EMAIL" , "email address to use for registration"
       end
 
       def run_with_options(client, options)
-        client.new_registration(options[:email])
+        hash = { }
+        hash[:contact] = [ "mailto:#{options[:email]}" ] if options[:email]
+        client.new_reg(hash)
       end
 
       def output_response_human(response)
@@ -200,6 +203,19 @@ module LERB
             Registration URL: #{response.location}
           END
         end
+    end
+
+    class Reg < Base
+      def add_command_options(p)
+        p.add_req "--uri=URI", "registration URI"
+        p.add_opt "--agreement=URI", "agree to the terms of service"
+      end
+
+      def run_with_options(client, options)
+        hash = { }
+        hash[:agreement] = options[:agreement] if options[:agreement]
+        client.reg(options[:uri], hash)
+      end
     end
 
     class NewAuthz < Base
@@ -249,18 +265,12 @@ module LERB
       @account_key = AccountKey.new(OpenSSL::PKey::RSA.new(File.read(key)))
     end
 
-    def new_registration(email)
-      execute directory["new-reg"],
-        resource: "new-reg",
-        contact: [ "mailto:#{email}" ]
+    def new_reg(hash)
+      execute directory["new-reg"], hash.merge(resource: "new-reg")
     end
 
-    def agree_to_tos!
-      registration = execute(registration_uri, resource: "reg")
-
-      execute registration_uri,
-        resource: "reg",
-        agreement: registration.links["terms-of-service"]
+    def reg(uri, hash)
+      execute registration_uri, hash.merge(resource: "reg")
     end
 
     def new_authorization(domain)
