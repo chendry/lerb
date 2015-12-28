@@ -194,14 +194,14 @@ module LERB
         def human_response_created(response)
           puts <<-END.unindent
             Created.
-            Registration URL: #{response.location}
+            Registration URI: #{response.location}
           END
         end
 
         def human_response_conflict(response)
           puts <<-END.unindent
             Conflict.  (Key associated with existing registration.)
-            Registration URL: #{response.location}
+            Registration URI: #{response.location}
           END
         end
     end
