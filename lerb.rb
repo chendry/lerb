@@ -56,6 +56,7 @@ module LERB
       add_req "--account-key=PATH", "private RSA key used for authentication"
       add_opt "--json", "output JSON responses from server"
       add_opt "--script", "output script-friendly export commands"
+      add_opt "--verbose", "verbose HTTP logging"
 
       @parser.on "--version", "print version number" do
         puts "0.0.1"
@@ -128,7 +129,7 @@ module LERB
       def run(args)
         options_hash = parse_arguments(args)
         uri = "https://acme-staging.api.letsencrypt.org/directory"
-        client = LERB::Client.new(uri, options_hash[:account_key])
+        client = LERB::Client.new(uri, options_hash[:account_key], options_hash[:verbose])
         response = run_with_options(client, options_hash)
         output_response(options_hash, response)
       end
@@ -260,9 +261,10 @@ module LERB
   end
 
   class Client
-    def initialize(uri, key)
+    def initialize(uri, key, verbose)
       @uri = URI(uri)
       @account_key = AccountKey.new(OpenSSL::PKey::RSA.new(File.read(key)))
+      @verbose = verbose
     end
 
     def new_reg(hash)
@@ -298,7 +300,7 @@ module LERB
         uri = URI(uri)
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = true
-        http.set_debug_output(STDOUT)
+        http.set_debug_output(STDOUT) if @verbose
 
         request = Net::HTTP::Post.new(uri.request_uri)
         request.body = LERB::JWS.new(@account_key, nonce, payload.to_json).build
