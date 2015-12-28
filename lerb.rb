@@ -118,17 +118,21 @@ module LERB
 
     class Base
       def run(args)
-        parser = MyOptionParser.new
-        parser.banner = "usage: lerb.rb #{command_name} [options]"
-        parser.add_common_options
-        parser.separator ""
-        parser.separator "#{command_name} command options"
-        add_command_options(parser)
-        options_hash = parser.parse!(args)
+        options_hash = parse_arguments(args)
         run_with_options(options_hash)
       end
 
       private
+
+        def parse_arguments(args)
+          parser = MyOptionParser.new
+          parser.banner = "usage: lerb.rb #{command_name} [options]"
+          parser.add_common_options
+          parser.separator ""
+          parser.separator "#{command_name} command options"
+          add_command_options(parser)
+          parser.parse!(args)
+        end
 
         def command_name
           self.class.name.split("::").last.split(/(?=[A-Z])/).join("-").downcase
