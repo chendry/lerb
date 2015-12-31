@@ -141,18 +141,6 @@ module LERB
 
       private
 
-        def render_output(client, response, options)
-          output = self.class.const_get("Output").new(client, response, options)
-
-          puts case
-            when options[:json] then output.json
-            when options[:script] then output.script
-            else output.human
-          end
-
-          puts ""
-        end
-
         def parse_arguments(args)
           parser = MyOptionParser.new
           parser.add_common_options
@@ -165,6 +153,18 @@ module LERB
 
         def command_name
           self.class.name.split("::").last.split(/(?=[A-Z])/).join("-").downcase
+        end
+
+        def render_output(client, response, options)
+          output = self.class.const_get("Output").new(client, response, options)
+
+          puts case
+            when options[:json] then output.json
+            when options[:script] then output.script
+            else output.human
+          end
+
+          puts ""
         end
     end
 
