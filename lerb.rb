@@ -339,12 +339,13 @@ module LERB
 
     class Challenge < BaseCommand
       def add_command_options(p)
-        p.add_req "--type=TYPE", "type of challenge"
         p.add_req "--uri=URI", "challenge URI"
+        p.add_req "--type=TYPE", "type of challenge"
         p.add_req "--token=TOKEN", "challenge token"
       end
 
       def run_with_options(client, options)
+        client.challenge(options[:uri], options[:type], options[:token])
       end
 
       class Output < BaseOutput
@@ -396,6 +397,13 @@ module LERB
           type: "dns",
           value: domain
         }
+    end
+
+    def challenge(uri, type, token)
+      execute uri,
+        resource: "challenge",
+        type: type,
+        keyAuthorization: key_authorization(token)
     end
 
     def new_cert(csr)
