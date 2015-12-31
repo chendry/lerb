@@ -188,7 +188,7 @@ module LERB
       private
 
         def tos_instructions
-          return nil unless defined?(:has_agreed_to_tos?) && !has_agreed_to_tos?
+          return unless uri = pending_agreement_uri rescue nil
 
           <<-END.unindent
             You must first agree to the terms of service before requesting a certificate.
@@ -240,7 +240,7 @@ module LERB
 
         private
 
-          def has_agreed_to_tos?
+          def pending_agreement_uri
             @response.links["terms-of-service"]
           end
       end
@@ -266,8 +266,15 @@ module LERB
 
         private
 
-          def has_agreed_to_tos?
-            JSON.parse(@response.body)["agreement"]
+          def pending_agreement_uri
+            signed = JSON.parse(@response.body)["agreement"]
+            current = @response.links["terms-of-service"]
+
+            if current != signed
+              current
+            else
+              nil
+            end
           end
       end
     end
