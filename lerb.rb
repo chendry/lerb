@@ -358,12 +358,19 @@ module LERB
 
     class NewCert < BaseCommand
       def add_command_options(p)
+        p.add_req "--csr=CSR", "CSR in either PEM or DER format"
       end
 
       def run_with_options(client, options)
+        csr = OpenSSL::X509::Request.new(File.read(options[:csr]))
+        client.new_cert(csr.to_der)
       end
 
       class Output < BaseOutput
+        def human
+          cert = OpenSSL::X509::Certificate.new(@response.body)
+          puts cert.to_pem
+        end
       end
     end
 
@@ -413,7 +420,7 @@ module LERB
     def new_cert(csr)
       execute directory["new-cert"],
         resource: "new-cert",
-        csr: Helper.b64(File.read(csr))
+        csr: Helper.b64(csr)
     end
 
     def key_authorization(token)
