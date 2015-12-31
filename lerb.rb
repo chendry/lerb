@@ -126,21 +126,21 @@ module LERB
 
     class BaseCommand
       def run(args)
-        options_hash = parse_arguments(args)
+        options = parse_arguments(args)
         uri = "https://acme-staging.api.letsencrypt.org/directory"
-        client = LERB::Client.new(uri, options_hash[:account_key], options_hash[:verbose])
-        response = run_with_options(client, options_hash)
-        puts output(client, response, options_hash)
+        client = LERB::Client.new(uri, options[:account_key], options[:verbose])
+        response = run_with_options(client, options)
+        puts output(client, response, options)
       end
 
       private
 
-        def output(client, response, options_hash)
-          output = self.class.const_get("Output").new(client, response, options_hash)
+        def output(client, response, options)
+          output = self.class.const_get("Output").new(client, response, options)
 
           case
-            when options_hash[:json] then output.json
-            when options_hash[:script] then output.script
+            when options[:json] then output.json
+            when options[:script] then output.script
             else output.human
           end
         end
