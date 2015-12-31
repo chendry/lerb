@@ -184,26 +184,24 @@ module LERB
 
       def output_response_human(response)
         case response.code
-          when "201" then human_response_created(response)
-          when "409" then human_response_conflict(response)
+          when "201"
+            puts <<-END.unindent
+              Created.
+              Registration URI: #{response.location}
+            END
+          when "409"
+            puts <<-END.unindent
+              Conflict.  (Key associated with existing registration.)
+              Registration URI: #{response.location}
+            END
         end
       end
 
-      private
-
-        def human_response_created(response)
-          puts <<-END.unindent
-            Created.
-            Registration URI: #{response.location}
-          END
-        end
-
-        def human_response_conflict(response)
-          puts <<-END.unindent
-            Conflict.  (Key associated with existing registration.)
-            Registration URI: #{response.location}
-          END
-        end
+      def output_response_script(response)
+        puts <<-END.unindent
+          export LERB_REGISTRATION_URI="#{response.location}"
+        END
+      end
     end
 
     class Reg < Base
@@ -216,6 +214,12 @@ module LERB
         hash = { }
         hash[:agreement] = options[:agreement] if options[:agreement]
         client.reg(options[:uri], hash)
+      end
+
+      def output_response_human(response)
+      end
+
+      def output_response_script(response)
       end
     end
 
