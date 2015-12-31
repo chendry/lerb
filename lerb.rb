@@ -217,7 +217,7 @@ module LERB
                 Your account has been created.  Make sure to keep your account key safe as it
                 is required for authenticating subsequent operations.
 
-                #{tos_instructions}
+                  #{tos_instructions}
               END
             when "409"
               puts <<-END.unindent
