@@ -322,6 +322,7 @@ module LERB
                 Then respond to the challenge by issuing the following command:
                   ./lerb.rb challenge \\
                     --account-key=#{@options[:account_key]} \\
+                    --uri=#{challenge["uri"]} \\
                     --type=#{challenge["type"]} \\
                     --token=#{challenge["token"]}
             END
