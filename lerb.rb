@@ -187,7 +187,7 @@ module LERB
       private
 
         def tos_instructions
-          return unless uri = @response.links["terms-of-service"]
+          return nil unless defined?(:has_agreed_to_tos?) && !has_agreed_to_tos?
 
           <<-END.unindent
             You must first agree to the terms of service before requesting a certificate.
@@ -236,6 +236,12 @@ module LERB
             export LERB_REGISTRATION_URI="#{@response.location}"
           END
         end
+
+        private
+
+          def has_agreed_to_tos?
+            @response.links["terms-of-service"]
+          end
       end
     end
 
@@ -256,6 +262,12 @@ module LERB
             #{tos_instructions}
           END
         end
+
+        private
+
+          def has_agreed_to_tos?
+            JSON.parse(@response.body)["agreement"]
+          end
       end
     end
 
