@@ -272,7 +272,7 @@ module LERB
     end
 
     class NewAuthz < BaseCommand
-      def add_common_options(p)
+      def add_command_options(p)
         p.add_req "--domain=DOMAIN", "domain name for which to request authorization"
       end
 
@@ -285,7 +285,7 @@ module LERB
     end
 
     class Challenge < BaseCommand
-      def add_common_options(p)
+      def add_command_options(p)
         p.add_req "--type=TYPE", "type of challenge"
         p.add_req "--uri=URI", "challenge URI"
         p.add_req "--token=TOKEN", "challenge token"
@@ -299,7 +299,7 @@ module LERB
     end
 
     class NewCert < BaseCommand
-      def add_common_options(p)
+      def add_command_options(p)
       end
 
       def run_with_options(client, options)
@@ -310,7 +310,7 @@ module LERB
     end
 
     class Cert < BaseCommand
-      def add_common_options(p)
+      def add_command_options(p)
       end
 
       def run_with_options(client, options)
