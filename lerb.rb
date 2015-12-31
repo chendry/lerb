@@ -183,6 +183,21 @@ module LERB
 
       def script
       end
+
+      private
+
+        def tos_instructions
+          return unless uri = @response.links["terms-of-service"]
+
+          <<-END.unindent
+            You must first agree to the terms of service before requesting a certificate.
+            Do so using the following command:
+
+            ./lerb.rb reg \\
+              --account-key=#{@options[:account_key]} \\
+              --agreement=#{uri}
+          END
+        end
     end
 
     class NewReg < BaseCommand
@@ -201,13 +216,17 @@ module LERB
           case @response.code
             when "201"
               puts <<-END.unindent
-                Created.
-                Registration URI: #{@response.location}
+                Your account has been created.  Make sure to keep your account key safe as it
+                is required for authenticating subsequent operations.
+
+                #{tos_instructions}
               END
             when "409"
               puts <<-END.unindent
-                Conflict.  (Key associated with existing registration.)
-                Registration URI: #{@response.location}
+                An account already exists for the supplied account key.  Use the following
+                command to get details about the existing account:
+
+                ./lerb.rb reg --account-key=#{@options[:account_key]}
               END
           end
         end
@@ -222,7 +241,6 @@ module LERB
 
     class Reg < BaseCommand
       def add_command_options(p)
-        p.add_req "--uri=URI", "registration URI"
         p.add_opt "--agreement=URI", "agree to the terms of service"
       end
 
@@ -233,6 +251,11 @@ module LERB
       end
 
       class Output < BaseOutput
+        def human
+          <<-END.unindent
+            #{tos_instructions}
+          END
+        end
       end
     end
 
@@ -372,6 +395,8 @@ module LERB
     def links
       if links = @response["Link"]
         Hash[links.scan(/\<(.+?)\>\;rel="(.+?)"/)].invert
+      else
+        { }
       end
     end
   end
