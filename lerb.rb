@@ -20,18 +20,20 @@ module LERB
 
   class CLI
     def self.run(args)
-      command = case command_name = args.shift
-        when "new-reg" then LERB::Commands::NewReg.new
-        when "reg" then LERB::Commands::Reg.new
-        when "new-authz" then LERB::Commands::NewAuthz.new
-        when "challenge" then LERB::Commands::Challenge.new
-        when "new-cert" then LERB::Commands::NewCert.new
-        when "cert" then LERB::Commands::Cert.new
-        when nil then  LERB::Commands::Help.new
-        else LERB::Commands::Help.new("error: unknown command: #{command_name}")
+      klass = case command_name = args.shift
+        when "new-reg" then LERB::Commands::NewReg
+        when "reg" then LERB::Commands::Reg
+        when "new-authz" then LERB::Commands::NewAuthz
+        when "challenge" then LERB::Commands::Challenge
+        when "new-cert" then LERB::Commands::NewCert
+        when "cert" then LERB::Commands::Cert
+        when nil then  LERB::Commands::Help
+        else
+          puts "error: unknown command: #{command_name}"
+          LERB::Commands::Help
       end
 
-      command.run(args)
+      klass.new.run(args)
     end
   end
 
@@ -40,7 +42,9 @@ module LERB
 
     def initialize
       @parser = OptionParser.new
-      @options = { }
+      @options = {
+        account_key: File.expand_path("~/.lerb/account_key")
+      }
       @required = [ ]
     end
 
@@ -53,7 +57,7 @@ module LERB
     def add_common_options
       separator ""
       separator "common options:"
-      add_req "--account-key=PATH", "private RSA key used for authentication"
+      add_opt "--account-key=PATH", "private RSA key used for authentication"
       add_opt "--json", "output JSON responses from server"
       add_opt "--script", "output script-friendly export commands"
       add_opt "--verbose", "verbose HTTP logging"
@@ -70,32 +74,29 @@ module LERB
     end
 
     def add_req(long, *args)
-      @required << long
+      @required << long_to_key(long)
       add_opt(long, *args)
     end
 
     def add_opt(long, *args)
       @parser.on long, *args do |v|
-        @options[long] = v
+        @options[long_to_key(long)] = v
       end
     end
 
     def parse!(args)
       @parser.parse(args)
-
       check_for_missing_arguments!
-
-      Hash[
-        @options.map do |long, v|
-          [ long_to_key(long), v ]
-        end
-      ]
+      @options
     end
 
     private
 
       def check_for_missing_arguments!
-        missing = @required - @options.keys
+        missing = (@required - @options.keys).collect do |key|
+          key_to_long(key)
+        end
+
         if missing.any?
           puts "error: the following argument(s) are required: #{missing.join(", ")}"
           puts usage
@@ -106,21 +107,19 @@ module LERB
       def long_to_key(long)
         long.gsub(/^--/, '').gsub('-', '_').gsub(/=.*/, '').to_sym
       end
+
+      def key_to_long(key)
+        "--#{key.to_s.gsub("_", "-")}"
+      end
   end
 
   module Commands
     class Help
-      def initialize(error = nil)
-        @error = error
-      end
-
       def run(args)
         o = MyOptionParser.new
         o.banner = "usage: lerb.rb command [options]"
         o.separator "  commands: new-reg, reg, new-authz, challenge, new-cert, cert"
         o.add_common_options
-
-        puts @error if @error
         puts o.usage
       end
     end
@@ -194,9 +193,7 @@ module LERB
             You must first agree to the terms of service before requesting a certificate.
             Do so using the following command:
 
-            ./lerb.rb reg \\
-              --account-key=#{@options[:account_key]} \\
-              --agreement=#{uri}
+              ./lerb.rb reg --agreement=#{uri}
           END
         end
     end
@@ -227,7 +224,7 @@ module LERB
                 An account already exists for the supplied account key.  Use the following
                 command to get details about the existing account:
 
-                ./lerb.rb reg --account-key=#{@options[:account_key]}
+                  ./lerb.rb reg
               END
           end
         end
@@ -328,7 +325,6 @@ module LERB
 
                 Then respond to the challenge by issuing the following command:
                   ./lerb.rb challenge \\
-                    --account-key=#{@options[:account_key]} \\
                     --uri=#{challenge["uri"]} \\
                     --type=#{challenge["type"]} \\
                     --token=#{challenge["token"]}
