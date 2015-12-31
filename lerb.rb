@@ -11,7 +11,7 @@ require 'forwardable'
 
 class String
   def unindent
-    gsub(/^#{match(/^\s+/)}/, "")
+    gsub(/^#{match(/^\s+/)}/, "").gsub("\n\n\n+", "\n\n").strip
   end
 end
 
