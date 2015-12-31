@@ -29,7 +29,7 @@ module LERB
         when "cert" then LERB::Commands::Cert
         when nil then  LERB::Commands::Help
         else
-          puts "error: unknown command: #{command_name}"
+          puts "error: unknown command: #{command_name}\n\n"
           LERB::Commands::Help
       end
 
@@ -51,13 +51,13 @@ module LERB
     def_delegators :@parser, :banner=, :separator
 
     def usage
-      @parser.to_s
+      @parser.to_s + "\n"
     end
 
     def add_common_options
       separator ""
       separator "common options:"
-      add_opt "--account-key=PATH", "private RSA key used for authentication"
+      add_opt "--account-key=PATH", "private RSA key used for authentication", "(defaults to ~/.lerb/account_key)"
       add_opt "--json", "output JSON responses from server"
       add_opt "--script", "output script-friendly export commands"
       add_opt "--verbose", "verbose HTTP logging"
@@ -98,7 +98,7 @@ module LERB
         end
 
         if missing.any?
-          puts "error: the following argument(s) are required: #{missing.join(", ")}"
+          puts "error: the following argument(s) are required: #{missing.join(", ")}\n\n"
           puts usage
           exit
         end
@@ -131,19 +131,21 @@ module LERB
         # uri = "https://acme-v01.api.letsencrypt.org/directory"
         client = LERB::Client.new(uri, options[:account_key], options[:verbose])
         response = run_with_options(client, options)
-        puts output(client, response, options)
+        render_output(client, response, options)
       end
 
       private
 
-        def output(client, response, options)
+        def render_output(client, response, options)
           output = self.class.const_get("Output").new(client, response, options)
 
-          case
+          puts case
             when options[:json] then output.json
             when options[:script] then output.script
             else output.human
           end
+
+          puts ""
         end
 
         def parse_arguments(args)
@@ -201,7 +203,7 @@ module LERB
 
     class NewReg < BaseCommand
       def add_command_options(p)
-        p.add_opt "--email=EMAIL" , "email address to use for registration"
+        p.add_req "--email=EMAIL" , "email address to use for registration"
       end
 
       def run_with_options(client, options)
@@ -214,14 +216,14 @@ module LERB
         def human
           case @response.code
             when "201"
-              puts <<-END.unindent
+              <<-END.unindent
                 Your account has been created.  Make sure to keep your account key safe as it
                 is required for authenticating subsequent operations.
 
                   #{tos_instructions}
               END
             when "409"
-              puts <<-END.unindent
+              <<-END.unindent
                 An account already exists for the supplied account key.  Use the following
                 command to get details about the existing account:
 
@@ -231,7 +233,7 @@ module LERB
         end
 
         def script
-          puts <<-END.unindent
+          <<-END.unindent
             export LERB_REGISTRATION_URI="#{@response.location}"
           END
         end
@@ -288,7 +290,7 @@ module LERB
 
       class Output < BaseOutput
         def human
-          return <<-END.unindent
+          <<-END.unindent
             The authorization has been created.  In order to prove control over this
             domain, you must perform one of the following challenges:
 
@@ -369,7 +371,7 @@ module LERB
       class Output < BaseOutput
         def human
           cert = OpenSSL::X509::Certificate.new(@response.body)
-          puts cert.to_pem
+          cert.to_pem
         end
       end
     end
