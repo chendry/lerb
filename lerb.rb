@@ -131,13 +131,13 @@ module LERB
         uri = "https://acme-staging.api.letsencrypt.org/directory"
         client = LERB::Client.new(uri, options_hash[:account_key], options_hash[:verbose])
         response = run_with_options(client, options_hash)
-        puts output(response, options_hash)
+        puts output(client, response, options_hash)
       end
 
       private
 
-        def output(response, options_hash)
-          output = self.class.const_get("Output").new(response, options_hash)
+        def output(client, response, options_hash)
+          output = self.class.const_get("Output").new(client, response, options_hash)
 
           case
             when options_hash[:json] then output.json
@@ -162,7 +162,8 @@ module LERB
     end
 
     class BaseOutput
-      def initialize(response, options)
+      def initialize(client, response, options)
+        @client = client
         @response = response
         @options = options
       end
@@ -277,10 +278,61 @@ module LERB
       end
 
       def run_with_options(client, options)
-        puts options.inspect
+        client.new_authz(options[:domain])
       end
 
       class Output < BaseOutput
+        def human
+          return <<-END.unindent
+            The authorization has been created.  In order to prove control over this
+            domain, you must perform one of the following challenges:
+
+            #{challenges.join("\n\n")}
+          END
+        end
+
+        private
+
+          def challenges
+            JSON.parse(@response.body)["challenges"].map do |challenge|
+              case challenge["type"]
+                when /^dns/ then dns_challenge(challenge)
+                when /^http/ then http_challenge(challenge)
+                when /^tls-sni/ then tls_sni_challenge(challenge)
+              end
+            end
+          end
+
+          def dns_challenge(challenge)
+            <<-END.unindent
+              DNS:
+                - No description yet.
+            END
+          end
+
+          def http_challenge(challenge)
+            <<-END.unindent
+              HTTP:
+                Place a file on your web server such that a request to:
+                  http://#{@options[:domain]}/.well-known/acme-challenge/#{challenge["token"]}
+
+                returns the following data:
+                  #{@client.key_authorization(challenge["token"])}
+
+                Then respond to the challenge by issuing the following command:
+                  ./lerb.rb challenge \\
+                    --account-key=#{@options[:account_key]} \\
+                    --type=#{challenge["type"]} \\
+                    --token=#{challenge["token"]}
+            END
+          end
+
+          def tls_sni_challenge(challenge)
+            <<-END.unindent
+              TLS-SNI:
+                - No description yet.
+            END
+          end
       end
     end
 
@@ -336,7 +388,7 @@ module LERB
       execute registration_uri, hash.merge(resource: "reg")
     end
 
-    def new_authorization(domain)
+    def new_authz(domain)
       execute directory["new-authz"],
         resource: "new-authz",
         identifier: {
@@ -349,6 +401,10 @@ module LERB
       execute directory["new-cert"],
         resource: "new-cert",
         csr: Helper.b64(File.read(csr))
+    end
+
+    def key_authorization(token)
+      KeyAuthorization.new(@account_key).build(token)
     end
 
     private
