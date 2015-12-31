@@ -91,11 +91,7 @@ module LERB
 
       check_for_missing_arguments!
 
-      defaults = {
-        account_key: File.expand_path("~/.lerb/account_key")
-      }
-
-      defaults.merge Hash[
+      Hash[
         @options.collect do |k, v|
           [ long_to_key(k), v ]
         end
