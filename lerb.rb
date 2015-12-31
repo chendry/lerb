@@ -42,9 +42,7 @@ module LERB
 
     def initialize
       @parser = OptionParser.new
-      @options = {
-        account_key: File.expand_path("~/.lerb/account_key")
-      }
+      @options = { }
       @required = [ ]
     end
 
@@ -74,31 +72,42 @@ module LERB
     end
 
     def add_req(long, *args)
-      @required << long_to_key(long)
+      @required << long
       add_opt(long, *args)
     end
 
     def add_opt(long, *args)
       @parser.on long, *args do |v|
-        @options[long_to_key(long)] = v
+        @options[long] = v
       end
+    end
+
+    def generate_banner(command_name)
+      @parser.banner = "usage: lerb.rb #{command_name} #{@required.join(" ")} [options]"
     end
 
     def parse!(args)
       @parser.parse(args)
+
       check_for_missing_arguments!
-      @options
+
+      defaults = {
+        account_key: File.expand_path("~/.lerb/account_key")
+      }
+
+      defaults.merge Hash[
+        @options.collect do |k, v|
+          [ long_to_key(k), v ]
+        end
+      ]
     end
 
     private
 
       def check_for_missing_arguments!
-        missing = (@required - @options.keys).collect do |key|
-          key_to_long(key)
-        end
-
+        missing = (@required - @options.keys)
         if missing.any?
-          puts "error: the following argument(s) are required: #{missing.join(", ")}\n\n"
+          puts "error: the following argument(s) are required: #{missing.join(" ")}\n\n"
           puts usage
           exit
         end
@@ -106,10 +115,6 @@ module LERB
 
       def long_to_key(long)
         long.gsub(/^--/, '').gsub('-', '_').gsub(/=.*/, '').to_sym
-      end
-
-      def key_to_long(key)
-        "--#{key.to_s.gsub("_", "-")}"
       end
   end
 
@@ -150,11 +155,11 @@ module LERB
 
         def parse_arguments(args)
           parser = MyOptionParser.new
-          parser.banner = "usage: lerb.rb #{command_name} [options]"
           parser.add_common_options
           parser.separator ""
-          parser.separator "#{command_name} command options"
+          parser.separator "#{command_name} command options:"
           add_command_options(parser)
+          parser.generate_banner(command_name)
           parser.parse!(args)
         end
 
