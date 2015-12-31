@@ -125,16 +125,26 @@ module LERB
       end
     end
 
-    class Base
+    class BaseCommand
       def run(args)
         options_hash = parse_arguments(args)
         uri = "https://acme-staging.api.letsencrypt.org/directory"
         client = LERB::Client.new(uri, options_hash[:account_key], options_hash[:verbose])
         response = run_with_options(client, options_hash)
-        output_response(options_hash, response)
+        puts output(response, options_hash)
       end
 
       private
+
+        def output(response, options_hash)
+          output = self.class.const_get("Output").new(response, options_hash)
+
+          case
+            when options_hash[:json] then output.json
+            when options_hash[:script] then output.script
+            else output.human
+          end
+        end
 
         def parse_arguments(args)
           parser = MyOptionParser.new
@@ -149,29 +159,33 @@ module LERB
         def command_name
           self.class.name.split("::").last.split(/(?=[A-Z])/).join("-").downcase
         end
-
-        def output_response(options_hash, response)
-          if options_hash[:json]
-            output_response_json(response)
-          elsif options_hash[:script]
-            output_response_script(response)
-          else
-            output_response_human(response)
-          end
-        end
-
-        def output_response_json(response)
-          output = {
-            headers: response.headers,
-            links: response.links,
-            body: JSON.parse(response.body)
-          }
-
-          puts output.to_json
-        end
     end
 
-    class NewReg < Base
+    class BaseOutput
+      def initialize(response, options)
+        @response = response
+        @options = options
+      end
+
+      def json
+        output = {
+          headers: @response.headers,
+          links: @response.links,
+          body: JSON.parse(@response.body)
+        }
+
+        output.to_json
+      end
+
+      def human
+        json
+      end
+
+      def script
+      end
+    end
+
+    class NewReg < BaseCommand
       def add_command_options(p)
         p.add_opt "--email=EMAIL" , "email address to use for registration"
       end
@@ -182,29 +196,31 @@ module LERB
         client.new_reg(hash)
       end
 
-      def output_response_human(response)
-        case response.code
-          when "201"
-            puts <<-END.unindent
-              Created.
-              Registration URI: #{response.location}
-            END
-          when "409"
-            puts <<-END.unindent
-              Conflict.  (Key associated with existing registration.)
-              Registration URI: #{response.location}
-            END
+      class Output < BaseOutput
+        def human
+          case @response.code
+            when "201"
+              puts <<-END.unindent
+                Created.
+                Registration URI: #{@response.location}
+              END
+            when "409"
+              puts <<-END.unindent
+                Conflict.  (Key associated with existing registration.)
+                Registration URI: #{@response.location}
+              END
+          end
         end
-      end
 
-      def output_response_script(response)
-        puts <<-END.unindent
-          export LERB_REGISTRATION_URI="#{response.location}"
-        END
+        def script
+          puts <<-END.unindent
+            export LERB_REGISTRATION_URI="#{@response.location}"
+          END
+        end
       end
     end
 
-    class Reg < Base
+    class Reg < BaseCommand
       def add_command_options(p)
         p.add_req "--uri=URI", "registration URI"
         p.add_opt "--agreement=URI", "agree to the terms of service"
@@ -216,14 +232,11 @@ module LERB
         client.reg(options[:uri], hash)
       end
 
-      def output_response_human(response)
-      end
-
-      def output_response_script(response)
+      class Output < BaseOutput
       end
     end
 
-    class NewAuthz < Base
+    class NewAuthz < BaseCommand
       def add_common_options(p)
         p.add_req "--domain=DOMAIN", "domain name for which to request authorization"
       end
@@ -231,9 +244,12 @@ module LERB
       def run_with_options(client, options)
         puts options.inspect
       end
+
+      class Output < BaseOutput
+      end
     end
 
-    class Challenge < Base
+    class Challenge < BaseCommand
       def add_common_options(p)
         p.add_req "--type=TYPE", "type of challenge"
         p.add_req "--uri=URI", "challenge URI"
@@ -241,25 +257,31 @@ module LERB
       end
 
       def run_with_options(client, options)
-        puts options.inspect
+      end
+
+      class Output < BaseOutput
       end
     end
 
-    class NewCert < Base
+    class NewCert < BaseCommand
       def add_common_options(p)
       end
 
       def run_with_options(client, options)
-        puts options.inspect
+      end
+
+      class Output < BaseOutput
       end
     end
 
-    class Cert < Base
+    class Cert < BaseCommand
       def add_common_options(p)
       end
 
       def run_with_options(client, options)
-        puts options.inspect
+      end
+
+      class Output < BaseOutput
       end
     end
   end
