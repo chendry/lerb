@@ -133,11 +133,19 @@ module LERB
       end
 
       def output_response(response)
-        o = MyOptionParser.new
-        o.banner = "usage: lerb.rb command [options]"
-        o.separator "  commands: new-reg, reg, new-authz, challenge, new-cert, cert"
-        o.add_common_options
-        puts o.usage
+        puts <<-END.unindent
+          usage: lerb.rb command [options]
+
+          where command is one of:
+            new-reg         register for a new account
+            reg             get account registration details
+            new-authz       authorize account to manage certificates for a domain
+            challenge       respond to a challenge to prove control of a domain
+            new-cert        request a certificate
+            cert            download certificate
+
+          run lerb.rb command --help for command-specific information.
+        END
       end
     end
 
