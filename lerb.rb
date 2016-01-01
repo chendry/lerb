@@ -13,8 +13,17 @@ class String
   def unindent
     gsub(/^#{match(/^\s+/)}/, "").gsub("\n\n\n+", "\n\n").strip
   end
+
+  def blank?
+    strip.length == 0
+  end
 end
 
+class NilClass
+  def blank?
+    true
+  end
+end
 
 module LERB
 
