@@ -43,7 +43,7 @@ module LERB
       end
 
       command = klass.new(args)
-      command.output_response(command.run)
+      command.output(command.run)
     end
   end
 
@@ -132,7 +132,7 @@ module LERB
       def run
       end
 
-      def output_response(response)
+      def output(response)
         puts <<-END.unindent
           usage: lerb.rb command [options]
 
@@ -157,7 +157,7 @@ module LERB
       def run
       end
 
-      def output_response(response)
+      def output(response)
         klass = self.class.const_get("Output")
         puts klass.new(client, response, options).generate
       end
