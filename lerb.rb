@@ -222,7 +222,7 @@ module LERB
 
       def run_with_options(client, options)
         hash = { }
-        hash[:contact] = [ "mailto:#{options[:email]}" ] if options[:email]
+        hash[:contact] = [ "mailto:#{options[:email]}" ]
         client.new_reg(hash)
       end
 
