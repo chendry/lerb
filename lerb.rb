@@ -187,12 +187,14 @@ module LERB
             uri = "https://acme-staging.api.letsencrypt.org/directory"
             # uri = "https://acme-v01.api.letsencrypt.org/directory"
 
-            account_key = LERB::AccountKey.new(options[:account_key])
-
             LERB::Client.new(uri, account_key).tap do |c|
               c.set_verbose if options[:verbose]
             end
           end
+        end
+
+        def account_key
+          @account_key ||= LERB::AccountKey.new(options[:account_key])
         end
 
         def command_name
