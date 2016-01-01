@@ -233,9 +233,7 @@ module LERB
       end
 
       def run
-        hash = { }
-        hash[:contact] = [ "mailto:#{options[:email]}" ]
-        client.new_reg(hash)
+        client.new_reg(contact: [ "mailto:#{options[:email]}" ] )
       end
 
       class Output < BaseOutput
