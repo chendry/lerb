@@ -143,12 +143,6 @@ module LERB
       end
 
       def run
-        uri = "https://acme-staging.api.letsencrypt.org/directory"
-        # uri = "https://acme-v01.api.letsencrypt.org/directory"
-
-        client = LERB::Client.new(uri, LERB::AccountKey.new(options[:account_key]))
-        client.set_verbose if options[:verbose]
-
         response = run_with_options(client)
         render_output(client, response)
       end
@@ -164,6 +158,19 @@ module LERB
             add_command_options(parser)
             parser.generate_banner(command_name)
             parser.parse!(@args)
+          end
+        end
+
+        def client
+          @client ||= begin
+            uri = "https://acme-staging.api.letsencrypt.org/directory"
+            # uri = "https://acme-v01.api.letsencrypt.org/directory"
+
+            account_key = LERB::AccountKey.new(options[:account_key])
+
+            LERB::Client.new(uri, account_key).tap do |c|
+              c.set_verbose if options[:verbose]
+            end
           end
         end
 
