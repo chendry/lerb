@@ -399,9 +399,9 @@ module LERB
   end
 
   class Client
-    def initialize(uri, key, verbose)
+    def initialize(uri, account_key_path, verbose)
       @uri = URI(uri)
-      @account_key = AccountKey.new(OpenSSL::PKey::RSA.new(File.read(key)))
+      @account_key = AccountKey.new(account_key_path)
       @verbose = verbose
     end
 
@@ -512,8 +512,13 @@ module LERB
   end
 
   class AccountKey
-    def initialize(key)
-      @key = key
+    def initialize(path)
+      @key = OpenSSL::PKey::RSA.new(File.read(path))
+    rescue OpenSSL::PKey::RSAError
+      puts <<-END.unindent
+        error opening RSA private account key at #{path}
+      END
+      exit
     end
 
     def jwk
