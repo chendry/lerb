@@ -143,8 +143,6 @@ module LERB
       end
 
       def run
-        options = parse_arguments(@args)
-
         uri = "https://acme-staging.api.letsencrypt.org/directory"
         # uri = "https://acme-v01.api.letsencrypt.org/directory"
 
@@ -157,14 +155,16 @@ module LERB
 
       private
 
-        def parse_arguments(args)
-          parser = MyOptionParser.new
-          parser.add_common_options
-          parser.separator ""
-          parser.separator "#{command_name} command options:"
-          add_command_options(parser)
-          parser.generate_banner(command_name)
-          parser.parse!(args)
+        def options
+          @options ||= begin
+            parser = MyOptionParser.new
+            parser.add_common_options
+            parser.separator ""
+            parser.separator "#{command_name} command options:"
+            add_command_options(parser)
+            parser.generate_banner(command_name)
+            parser.parse!(@args)
+          end
         end
 
         def command_name
