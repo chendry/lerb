@@ -25,6 +25,12 @@ class NilClass
   end
 end
 
+class Hash
+  def compact
+    reject { |k, v| v.nil? }
+  end
+end
+
 module LERB
 
   class CLI
@@ -229,7 +235,7 @@ module LERB
 
     class NewReg < BaseCommand
       def add_command_options(p)
-        p.add_req "--email=EMAIL" , "email address to use for registration"
+        p.add_req "--email=EMAIL", "email address to use for registration"
       end
 
       def run
@@ -252,8 +258,10 @@ module LERB
       end
 
       def run
-        hash = { }
-        hash[:agreement] = options[:agreement] if options[:agreement]
+        hash = {
+          agreement: options[:agreement]
+        }.compact
+
         client.reg(options[:uri], hash)
       end
 
