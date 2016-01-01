@@ -139,7 +139,11 @@ module LERB
         options = parse_arguments(args)
         uri = "https://acme-staging.api.letsencrypt.org/directory"
         # uri = "https://acme-v01.api.letsencrypt.org/directory"
-        client = LERB::Client.new(uri, options[:account_key], options[:verbose])
+
+        client = LERB::Client.new uri,
+          LERB::AccountKey.new(options[:account_key]),
+          options[:verbose]
+
         response = run_with_options(client, options)
         render_output(client, response, options)
       end
@@ -399,9 +403,9 @@ module LERB
   end
 
   class Client
-    def initialize(uri, account_key_path, verbose)
+    def initialize(uri, account_key, verbose)
       @uri = URI(uri)
-      @account_key = AccountKey.new(account_key_path)
+      @account_key = account_key
       @verbose = verbose
     end
 
