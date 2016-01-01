@@ -200,19 +200,6 @@ module LERB
 
       def script
       end
-
-      private
-
-        def tos_instructions
-          return unless uri = pending_agreement_uri rescue nil
-
-          <<-END.unindent
-            You must first agree to the terms of service before requesting a certificate.
-            Do so using the following command:
-
-              ./lerb.rb reg --agreement=#{uri}
-          END
-        end
     end
 
     class NewReg < BaseCommand
@@ -229,34 +216,10 @@ module LERB
       class Output < BaseOutput
         def human
           case @response.code
-            when "201"
-              <<-END.unindent
-                Your account has been created.  Make sure to keep your account key safe as it
-                is required for authenticating subsequent operations.
-
-                  #{tos_instructions}
-              END
-            when "409"
-              <<-END.unindent
-                An account already exists for the supplied account key.  Use the following
-                command to get details about the existing account:
-
-                  ./lerb.rb reg
-              END
+            when "201" then "Your account has been created."
+            when "409" then "An account already exists for the supplied account key."
           end
         end
-
-        def script
-          <<-END.unindent
-            export LERB_REGISTRATION_URI="#{@response.location}"
-          END
-        end
-
-        private
-
-          def pending_agreement_uri
-            @response.links["terms-of-service"]
-          end
       end
     end
 
@@ -272,24 +235,6 @@ module LERB
       end
 
       class Output < BaseOutput
-        def human
-          <<-END.unindent
-            #{tos_instructions}
-          END
-        end
-
-        private
-
-          def pending_agreement_uri
-            signed = JSON.parse(@response.body)["agreement"]
-            current = @response.links["terms-of-service"]
-
-            if current != signed
-              current
-            else
-              nil
-            end
-          end
       end
     end
 
