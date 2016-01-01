@@ -165,15 +165,7 @@ module LERB
         end
 
         def render_output(client, response, options)
-          output = self.class.const_get("Output").new(client, response, options)
-
-          puts case
-            when options[:json] then output.json
-            when options[:script] then output.script
-            else output.human
-          end
-
-          puts ""
+          puts self.class.const_get("Output").new(client, response, options).generate
         end
     end
 
@@ -182,6 +174,14 @@ module LERB
         @client = client
         @response = response
         @options = options
+      end
+
+      def generate
+        case
+          when @options[:json] then json
+          when @options[:script] then script
+          else human
+        end + "\n"
       end
 
       def json
