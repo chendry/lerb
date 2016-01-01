@@ -42,7 +42,7 @@ module LERB
           LERB::Commands::Help
       end
 
-      klass.new.run(args)
+      klass.new(args).run
     end
   end
 
@@ -125,7 +125,10 @@ module LERB
 
   module Commands
     class Help
-      def run(args)
+      def initialize(args)
+      end
+
+      def run
         o = MyOptionParser.new
         o.banner = "usage: lerb.rb command [options]"
         o.separator "  commands: new-reg, reg, new-authz, challenge, new-cert, cert"
@@ -135,8 +138,12 @@ module LERB
     end
 
     class BaseCommand
-      def run(args)
-        options = parse_arguments(args)
+      def initialize(args)
+        @args = args
+      end
+
+      def run
+        options = parse_arguments(@args)
 
         uri = "https://acme-staging.api.letsencrypt.org/directory"
         # uri = "https://acme-v01.api.letsencrypt.org/directory"
