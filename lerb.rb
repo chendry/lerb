@@ -42,7 +42,8 @@ module LERB
           LERB::Commands::Help
       end
 
-      klass.new(args).run
+      command = klass.new(args)
+      command.output_response(command.run)
     end
   end
 
@@ -129,6 +130,9 @@ module LERB
       end
 
       def run
+      end
+
+      def output_response(response)
         o = MyOptionParser.new
         o.banner = "usage: lerb.rb command [options]"
         o.separator "  commands: new-reg, reg, new-authz, challenge, new-cert, cert"
@@ -143,7 +147,11 @@ module LERB
       end
 
       def run
-        render_output(run_with_options)
+      end
+
+      def output_response(response)
+        klass = self.class.const_get("Output")
+        puts klass.new(client, response, options).generate
       end
 
       private
@@ -175,10 +183,6 @@ module LERB
 
         def command_name
           self.class.name.split("::").last.split(/(?=[A-Z])/).join("-").downcase
-        end
-
-        def render_output(response)
-          puts self.class.const_get("Output").new(client, response, options).generate
         end
     end
 
@@ -220,7 +224,7 @@ module LERB
         p.add_req "--email=EMAIL" , "email address to use for registration"
       end
 
-      def run_with_options
+      def run
         hash = { }
         hash[:contact] = [ "mailto:#{options[:email]}" ]
         client.new_reg(hash)
@@ -241,7 +245,7 @@ module LERB
         p.add_opt "--agreement=URI", "agree to the terms of service"
       end
 
-      def run_with_options
+      def run
         hash = { }
         hash[:agreement] = options[:agreement] if options[:agreement]
         client.reg(options[:uri], hash)
@@ -256,7 +260,7 @@ module LERB
         p.add_req "--domain=DOMAIN", "domain name for which to request authorization"
       end
 
-      def run_with_options
+      def run
         client.new_authz(options[:domain])
       end
 
@@ -322,7 +326,7 @@ module LERB
         p.add_req "--token=TOKEN", "challenge token"
       end
 
-      def run_with_options
+      def run
         client.challenge(options[:uri], options[:type], options[:token])
       end
 
@@ -335,7 +339,7 @@ module LERB
         p.add_req "--csr=CSR", "CSR in either PEM or DER format"
       end
 
-      def run_with_options
+      def run
         csr = OpenSSL::X509::Request.new(File.read(options[:csr]))
         client.new_cert(csr.to_der)
       end
@@ -352,7 +356,7 @@ module LERB
       def add_command_options(p)
       end
 
-      def run_with_options
+      def run
       end
 
       class Output < BaseOutput
