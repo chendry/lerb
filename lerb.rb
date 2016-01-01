@@ -137,12 +137,12 @@ module LERB
     class BaseCommand
       def run(args)
         options = parse_arguments(args)
+
         uri = "https://acme-staging.api.letsencrypt.org/directory"
         # uri = "https://acme-v01.api.letsencrypt.org/directory"
 
-        client = LERB::Client.new uri,
-          LERB::AccountKey.new(options[:account_key]),
-          options[:verbose]
+        client = LERB::Client.new(uri, LERB::AccountKey.new(options[:account_key]))
+        client.set_verbose if options[:verbose]
 
         response = run_with_options(client, options)
         render_output(client, response, options)
@@ -403,10 +403,15 @@ module LERB
   end
 
   class Client
-    def initialize(uri, account_key, verbose)
+    def initialize(uri, account_key)
       @uri = URI(uri)
+      @http = Net::HTTP.new(@uri.host, @uri.port)
+      @http.use_ssl = true
       @account_key = account_key
-      @verbose = verbose
+    end
+
+    def set_verbose
+      @http.set_debug_output(STDOUT)
     end
 
     def new_reg(hash)
@@ -450,28 +455,20 @@ module LERB
       end
 
       def execute(uri, payload)
-        uri = URI(uri)
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = true
-        http.set_debug_output(STDOUT) if @verbose
-
-        request = Net::HTTP::Post.new(uri.request_uri)
+        request = Net::HTTP::Post.new(uri)
         request.body = LERB::JWS.new(@account_key, nonce, payload.to_json).build
-
-        LERB::Response.new(http.request(request))
+        LERB::Response.new(@http.request(request))
       end
 
       def nonce
-        http = Net::HTTP.new(@uri.host, @uri.port)
-        http.use_ssl = true
-
-        http.start do |h|
-          h.request(Net::HTTP::Head.new(@uri))["Replay-Nonce"]
-        end
+        @http.request(Net::HTTP::Head.new(@uri))["Replay-Nonce"]
       end
 
       def registration_uri
-        @registration_uri ||= execute(directory["new-reg"], resource: "new-reg").location
+        @registration_uri ||= begin
+          response = execute(directory["new-reg"], resource: "new-reg")
+          response.location
+        end
       end
   end
 
@@ -517,12 +514,16 @@ module LERB
 
   class AccountKey
     def initialize(path)
-      @key = OpenSSL::PKey::RSA.new(File.read(path))
-    rescue OpenSSL::PKey::RSAError
-      puts <<-END.unindent
-        error opening RSA private account key at #{path}
-      END
-      exit
+      @path = path || AccountKey.default_path
+      load_key!
+    end
+
+    def self.default_path
+      File.expand_path("~/.lerb/account_key")
+    end
+
+    def is_default_path?
+      @path == AccountKey.default_path
     end
 
     def jwk
@@ -536,6 +537,38 @@ module LERB
     def sign(input)
       @key.sign(OpenSSL::Digest::SHA256.new, input)
     end
+
+    private
+
+      def load_key!
+        @key = OpenSSL::PKey::RSA.new(File.read(@path))
+      rescue
+        if user_aware_of_account_key?
+          puts "error: unable to load RSA private key at #{@path}"
+        else
+          show_account_key_help
+        end
+
+        exit 1
+      end
+
+      def user_aware_of_account_key?
+        File.exists?(@path) || !is_default_path?
+      end
+
+      def show_account_key_help
+        puts <<-END.unindent
+          error: could not load account key.
+
+          Your account key is required as it is used for authentication.  You may either
+          use the --account-key=PATH argument, or store the account key at
+          ~/.lerb/account_key to be loaded by default.
+
+          Use the following example commands to generate an account key:
+
+            mkdir -p ~/.lerb && openssl genrsa -aes128 -out ~/.lerb/account_key 2048
+        END
+      end
   end
 
   class JWS
