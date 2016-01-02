@@ -36,7 +36,7 @@ module LERB
 
     def run
       result = command_class.new.run(@client, @options)
-      output = command_class::Output.new(@client, result, @options)
+      output = command_class::Output.new(@client, @options, result)
       puts output
     end
 
@@ -163,10 +163,10 @@ module LERB
 
   module Commands
     class BaseOutput
-      def initialize(client, result, options)
+      def initialize(client, options, result)
         @client = client
-        @result = result
         @options = options
+        @result = result
       end
 
       def to_s
