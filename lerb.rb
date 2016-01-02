@@ -287,7 +287,7 @@ module LERB
         private
 
           def challenges
-            JSON.parse(@result[:body])["challenges"].map do |challenge|
+            @result[:body]["challenges"].map do |challenge|
               case challenge["type"]
                 when /^dns/ then dns_challenge(challenge)
                 when /^http/ then http_challenge(challenge)
