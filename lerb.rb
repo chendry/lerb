@@ -223,7 +223,7 @@ module LERB
           when @options[:json] then json
           when @options[:script] then script
           else human
-        end + "\n"
+        end
       end
 
       def json
@@ -267,7 +267,7 @@ module LERB
           agreement: options[:agreement]
         }.compact
 
-        client.reg(options[:uri], hash)
+        client.reg(hash)
       end
 
       class Output < BaseOutput
@@ -397,13 +397,15 @@ module LERB
 
     def new_reg(hash)
       execute directory["new-reg"], hash.merge(resource: "new-reg")
+      agree_to_tos!
     end
 
-    def reg(uri, hash)
+    def reg(hash)
       execute registration_uri, hash.merge(resource: "reg")
     end
 
     def new_authz(domain)
+      agree_to_tos!
       execute directory["new-authz"],
         resource: "new-authz",
         identifier: {
@@ -413,6 +415,7 @@ module LERB
     end
 
     def challenge(uri, type, token)
+      agree_to_tos!
       execute uri,
         resource: "challenge",
         type: type,
@@ -420,6 +423,7 @@ module LERB
     end
 
     def new_cert(csr)
+      agree_to_tos!
       execute directory["new-cert"],
         resource: "new-cert",
         csr: Helper.b64(csr)
@@ -427,6 +431,17 @@ module LERB
 
     def key_authorization(token)
       KeyAuthorization.new(@account_key).build(token)
+    end
+
+    def agree_to_tos!
+      result = reg({})
+
+      current = result[:links]["terms-of-service"]
+      signed = JSON.parse(result[:body])["agreement"]
+
+      if signed != current
+        reg(agreement: current)
+      end
     end
 
     private
@@ -445,7 +460,7 @@ module LERB
           headers: response.to_hash,
           location: response["Location"],
           links: links(response),
-          body: response.body
+          body: ( JSON.parse(response.body) rescue response.body )
         }
       end
 
