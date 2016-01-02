@@ -69,39 +69,18 @@ module LERB
   end
 
   class MyOptionParser
-    extend Forwardable
-
-    def initialize
+    def initialize(command_name, &block)
       @parser = OptionParser.new
       @options = { }
       @required = [ ]
-    end
 
-    def self.parse(command_name, args)
-      parser = new.tap do |p|
-        p.add_common_options
-        p.separator ""
-        p.separator "#{command_name} command options:"
-        yield(p)
-        p.generate_banner(command_name)
-      end
+      @parser.separator ""
+      @parser.separator "common options:"
 
-      parser.parse(args)
-    end
-
-    def_delegators :@parser, :banner=, :separator
-
-    def usage
-      @parser.to_s + "\n"
-    end
-
-    def add_common_options
-      separator ""
-      separator "common options:"
-      add_opt "--account-key=PATH", "private RSA key used for authentication", "(defaults to ~/.lerb/account_key)"
-      add_opt "--json", "output JSON responses from server"
-      add_opt "--script", "output script-friendly export commands"
-      add_opt "--verbose", "verbose HTTP logging"
+      opt "--account-key=PATH", "private RSA key used for authentication", "(defaults to ~/.lerb/account_key)"
+      opt "--json", "output JSON responses from server"
+      opt "--script", "output script-friendly export commands"
+      opt "--verbose", "verbose HTTP logging"
 
       @parser.on "--version", "print version number" do
         puts "0.0.1"
@@ -109,30 +88,33 @@ module LERB
       end
 
       @parser.on "--help", "display this message" do
-        puts usage
+        puts @parser
         exit
       end
-    end
 
-    def add_req(long, *args)
-      @required << long
-      add_opt(long, *args)
-    end
+      @parser.separator ""
+      @parser.separator "#{command_name} command options:"
 
-    def add_opt(long, *args)
-      @parser.on long, *args do |v|
-        @options[long] = v
-      end
-    end
+      yield(self)
 
-    def generate_banner(command_name)
       @parser.banner = "usage: lerb.rb #{command_name} #{@required.join(" ")} [options]"
+    end
+
+    def opt(long, *args)
+      add_switch(false, long, args)
+    end
+
+    def req(long, *args)
+      add_switch(true, long, args)
     end
 
     def parse(args)
       @parser.parse(args)
 
-      check_for_missing_arguments!
+      if missing_required_argument?
+        puts @parser.to_s
+        exit
+      end
 
       Hash[
         @options.collect do |k, v|
@@ -143,13 +125,13 @@ module LERB
 
     private
 
-      def check_for_missing_arguments!
-        missing = (@required - @options.keys)
-        if missing.any?
-          puts "error: the following argument(s) are required: #{missing.join(" ")}\n\n"
-          puts usage
-          exit
-        end
+      def add_switch(required, long, args)
+        @required << long if required
+        @parser.on(long, *args) { |v| @options[long] = v }
+      end
+
+      def missing_required_argument?
+        ( @required - @options.keys ).any?
       end
 
       def long_to_key(long)
@@ -174,9 +156,11 @@ module LERB
 
         def options
           @options ||= begin
-            MyOptionParser.parse(command_name, @args) do |p|
+            parser = MyOptionParser.new(command_name) do |p|
               add_command_options(p)
             end
+
+            parser.parse(@args)
           end
         end
 
@@ -225,8 +209,8 @@ module LERB
 
     class NewReg < BaseCommand
       def add_command_options(p)
-        p.add_opt "--email=EMAIL", "contact email address"
-        p.add_opt "--agreement=URI", "agree to the terms of service"
+        p.opt "--email=EMAIL", "contact email address"
+        p.opt "--agreement=URI", "agree to the terms of service"
       end
 
       def run
@@ -249,8 +233,8 @@ module LERB
 
     class Reg < BaseCommand
       def add_command_options(p)
-        p.add_opt "--email=EMAIL", "contact email address"
-        p.add_opt "--agreement=URI", "agree to the terms of service"
+        p.opt "--email=EMAIL", "contact email address"
+        p.opt "--agreement=URI", "agree to the terms of service"
       end
 
       def run
@@ -267,7 +251,7 @@ module LERB
 
     class NewAuthz < BaseCommand
       def add_command_options(p)
-        p.add_req "--domain=DOMAIN", "domain name for which to request authorization"
+        p.req "--domain=DOMAIN", "domain name for which to request authorization"
       end
 
       def run
@@ -331,9 +315,9 @@ module LERB
 
     class Challenge < BaseCommand
       def add_command_options(p)
-        p.add_req "--uri=URI", "challenge URI"
-        p.add_req "--type=TYPE", "type of challenge"
-        p.add_req "--token=TOKEN", "challenge token"
+        p.req "--uri=URI", "challenge URI"
+        p.req "--type=TYPE", "type of challenge"
+        p.req "--token=TOKEN", "challenge token"
       end
 
       def run
@@ -346,7 +330,7 @@ module LERB
 
     class NewCert < BaseCommand
       def add_command_options(p)
-        p.add_req "--csr=CSR", "CSR in either PEM or DER format"
+        p.req "--csr=CSR", "CSR in either PEM or DER format"
       end
 
       def run
