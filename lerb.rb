@@ -28,64 +28,66 @@ end
 module LERB
 
   class CLI
-    class <<self
-      def run(args)
-        command_name = args.shift
-        klass = command_class(command_name)
+    def initialize(args)
+      @command_name = args.shift
+      @options = parse_args(args)
+      @client = build_client
+    end
 
-        parser = MyOptionParser.new(command_name) do |p|
-          klass.command_options(p)
+    def run
+      result = command_class.new.run(@client, @options)
+      output = command_class::Output.new(@client, result, @options)
+      puts output
+    end
+
+    private
+
+      def command_class
+        case @command_name
+          when "new-reg" then LERB::Commands::NewReg
+          when "reg" then LERB::Commands::Reg
+          when "new-authz" then LERB::Commands::NewAuthz
+          when "challenge" then LERB::Commands::Challenge
+          when "new-cert" then LERB::Commands::NewCert
+          when "cert" then LERB::Commands::Cert
+          else
+            show_help
+            exit
         end
-
-        options = parser.parse(args)
-        client = build_client(options)
-
-        result = klass.new.run(client, options)
-
-        puts klass::Output.new(client, result, options).generate
       end
 
-      private
+      def show_help
+        puts <<-END.unindent
+          usage: lerb.rb command [options]
 
-        def command_class(name)
-          case name
-            when "new-reg" then LERB::Commands::NewReg
-            when "reg" then LERB::Commands::Reg
-            when "new-authz" then LERB::Commands::NewAuthz
-            when "challenge" then LERB::Commands::Challenge
-            when "new-cert" then LERB::Commands::NewCert
-            when "cert" then LERB::Commands::Cert
-            else
-              show_help
-              exit
-          end
+          where command is one of:
+            new-reg         register for a new account
+            reg             get account registration details
+            new-authz       authorize account to manage certificates for a domain
+            challenge       respond to a challenge to prove control of a domain
+            new-cert        request a certificate
+            cert            download certificate
+
+          run lerb.rb command --help for command-specific information.
+        END
+      end
+
+      def parse_args(args)
+        parser = MyOptionParser.new(@command_name) do |p|
+          command_class.add_command_options(p)
         end
 
-        def show_help
-          puts <<-END.unindent
-            usage: lerb.rb command [options]
+        parser.parse(args)
+      end
 
-            where command is one of:
-              new-reg         register for a new account
-              reg             get account registration details
-              new-authz       authorize account to manage certificates for a domain
-              challenge       respond to a challenge to prove control of a domain
-              new-cert        request a certificate
-              cert            download certificate
+      def build_client
+        uri = "https://acme-staging.api.letsencrypt.org/directory"
+        account_key = LERB::AccountKey.new(@options[:account_key])
 
-            run lerb.rb command --help for command-specific information.
-          END
+        LERB::Client.new(uri, account_key).tap do |c|
+          c.set_verbose if @options[:verbose]
         end
-
-        def build_client(options)
-          uri = "https://acme-staging.api.letsencrypt.org/directory"
-          account_key = LERB::AccountKey.new(options[:account_key])
-
-          LERB::Client.new(uri, account_key).tap do |c|
-            c.set_verbose if options[:verbose]
-          end
-        end
-    end
+      end
   end
 
   class MyOptionParser
@@ -188,7 +190,7 @@ module LERB
     end
 
     class NewReg
-      def self.command_options(p)
+      def self.add_command_options(p)
         p.opt "--email=EMAIL", "contact email address"
         p.opt "--agreement=URI", "agree to the terms of service"
       end
@@ -212,7 +214,7 @@ module LERB
     end
 
     class Reg
-      def self.command_options(p)
+      def self.add_command_options(p)
         p.opt "--email=EMAIL", "contact email address"
         p.opt "--agreement=URI", "agree to the terms of service"
       end
@@ -230,7 +232,7 @@ module LERB
     end
 
     class NewAuthz
-      def self.command_options(p)
+      def self.add_command_options(p)
         p.req "--domain=DOMAIN", "domain name for which to request authorization"
       end
 
@@ -294,7 +296,7 @@ module LERB
     end
 
     class Challenge
-      def self.command_options(p)
+      def self.add_command_options(p)
         p.req "--uri=URI", "challenge URI"
         p.req "--type=TYPE", "type of challenge"
         p.req "--token=TOKEN", "challenge token"
@@ -309,7 +311,7 @@ module LERB
     end
 
     class NewCert
-      def self.command_options(p)
+      def self.add_command_options(p)
         p.req "--csr=CSR", "CSR in either PEM or DER format"
       end
 
@@ -327,7 +329,7 @@ module LERB
     end
 
     class Cert
-      def self.command_options(p)
+      def self.add_command_options(p)
       end
 
       def run(client, options)
@@ -553,4 +555,4 @@ module LERB
 
 end
 
-LERB::CLI.run(ARGV)
+LERB::CLI.new(ARGV).run
