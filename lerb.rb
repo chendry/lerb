@@ -30,7 +30,16 @@ module LERB
   class CLI
     class <<self
       def run(args)
-        command = command_class(args.shift).new(args)
+        command_name = args.shift
+        klass = command_class(command_name)
+
+        parser = MyOptionParser.new(command_name) do |p|
+          klass.add_command_options(p)
+        end
+
+        options = parser.parse(args)
+
+        command = klass.new(options)
         command.output(command.run)
       end
 
@@ -141,9 +150,11 @@ module LERB
 
   module Commands
     class BaseCommand
-      def initialize(args)
-        @args = args
+      def initialize(options)
+        @options = options
       end
+
+      attr_reader :options
 
       def run
       end
@@ -153,16 +164,6 @@ module LERB
       end
 
       private
-
-        def options
-          @options ||= begin
-            parser = MyOptionParser.new(command_name) do |p|
-              add_command_options(p)
-            end
-
-            parser.parse(@args)
-          end
-        end
 
         def client
           @client ||= begin
@@ -208,7 +209,7 @@ module LERB
     end
 
     class NewReg < BaseCommand
-      def add_command_options(p)
+      def self.add_command_options(p)
         p.opt "--email=EMAIL", "contact email address"
         p.opt "--agreement=URI", "agree to the terms of service"
       end
@@ -232,7 +233,7 @@ module LERB
     end
 
     class Reg < BaseCommand
-      def add_command_options(p)
+      def self.add_command_options(p)
         p.opt "--email=EMAIL", "contact email address"
         p.opt "--agreement=URI", "agree to the terms of service"
       end
@@ -250,7 +251,7 @@ module LERB
     end
 
     class NewAuthz < BaseCommand
-      def add_command_options(p)
+      def self.add_command_options(p)
         p.req "--domain=DOMAIN", "domain name for which to request authorization"
       end
 
@@ -314,7 +315,7 @@ module LERB
     end
 
     class Challenge < BaseCommand
-      def add_command_options(p)
+      def self.add_command_options(p)
         p.req "--uri=URI", "challenge URI"
         p.req "--type=TYPE", "type of challenge"
         p.req "--token=TOKEN", "challenge token"
@@ -329,7 +330,7 @@ module LERB
     end
 
     class NewCert < BaseCommand
-      def add_command_options(p)
+      def self.add_command_options(p)
         p.req "--csr=CSR", "CSR in either PEM or DER format"
       end
 
@@ -347,7 +348,7 @@ module LERB
     end
 
     class Cert < BaseCommand
-      def add_command_options(p)
+      def self.add_command_options(p)
       end
 
       def run
