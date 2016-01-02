@@ -148,9 +148,6 @@ module LERB
       end
 
       def run
-      end
-
-      def output(response)
         puts <<-END.unindent
           usage: lerb.rb command [options]
 
@@ -165,6 +162,9 @@ module LERB
           run lerb.rb command --help for command-specific information.
         END
       end
+
+      def output(response)
+      end
     end
 
     class BaseCommand
@@ -176,8 +176,7 @@ module LERB
       end
 
       def output(response)
-        klass = self.class.const_get("Output")
-        puts klass.new(client, response, options).generate
+        puts self.class::Output.new(client, response, options).generate
       end
 
       private
@@ -193,16 +192,12 @@ module LERB
         def client
           @client ||= begin
             uri = "https://acme-staging.api.letsencrypt.org/directory"
-            # uri = "https://acme-v01.api.letsencrypt.org/directory"
+            account_key = LERB::AccountKey.new(options[:account_key])
 
             LERB::Client.new(uri, account_key).tap do |c|
               c.set_verbose if options[:verbose]
             end
           end
-        end
-
-        def account_key
-          @account_key ||= LERB::AccountKey.new(options[:account_key])
         end
 
         def command_name
