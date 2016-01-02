@@ -44,11 +44,26 @@ module LERB
             when "challenge" then LERB::Commands::Challenge
             when "new-cert" then LERB::Commands::NewCert
             when "cert" then LERB::Commands::Cert
-            when nil then  LERB::Commands::Help
             else
-              puts "error: unknown command: #{name}\n\n"
-              LERB::Commands::Help
+              show_help
+              exit
           end
+        end
+
+        def show_help
+          puts <<-END.unindent
+            usage: lerb.rb command [options]
+
+            where command is one of:
+              new-reg         register for a new account
+              reg             get account registration details
+              new-authz       authorize account to manage certificates for a domain
+              challenge       respond to a challenge to prove control of a domain
+              new-cert        request a certificate
+              cert            download certificate
+
+            run lerb.rb command --help for command-specific information.
+          END
         end
     end
   end
@@ -143,30 +158,6 @@ module LERB
   end
 
   module Commands
-    class Help
-      def initialize(args)
-      end
-
-      def run
-        puts <<-END.unindent
-          usage: lerb.rb command [options]
-
-          where command is one of:
-            new-reg         register for a new account
-            reg             get account registration details
-            new-authz       authorize account to manage certificates for a domain
-            challenge       respond to a challenge to prove control of a domain
-            new-cert        request a certificate
-            cert            download certificate
-
-          run lerb.rb command --help for command-specific information.
-        END
-      end
-
-      def output(result)
-      end
-    end
-
     class BaseCommand
       def initialize(args)
         @args = args
