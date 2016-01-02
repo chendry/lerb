@@ -169,7 +169,7 @@ module LERB
         END
       end
 
-      def output(response)
+      def output(result)
       end
     end
 
@@ -181,8 +181,8 @@ module LERB
       def run
       end
 
-      def output(response)
-        puts self.class::Output.new(client, response, options).generate
+      def output(result)
+        puts self.class::Output.new(client, result, options).generate
       end
 
       private
@@ -212,9 +212,9 @@ module LERB
     end
 
     class BaseOutput
-      def initialize(client, response, options)
+      def initialize(client, result, options)
         @client = client
-        @response = response
+        @result = result
         @options = options
       end
 
@@ -227,7 +227,7 @@ module LERB
       end
 
       def json
-        @response.to_json
+        @result.to_json
       end
 
       def human
@@ -249,7 +249,7 @@ module LERB
 
       class Output < BaseOutput
         def human
-          case @response[:code]
+          case @result[:code]
             when "201" then "Your account has been created."
             when "409" then "An account already exists for the supplied account key."
           end
@@ -296,7 +296,7 @@ module LERB
         private
 
           def challenges
-            JSON.parse(@response[:body])["challenges"].map do |challenge|
+            JSON.parse(@result[:body])["challenges"].map do |challenge|
               case challenge["type"]
                 when /^dns/ then dns_challenge(challenge)
                 when /^http/ then http_challenge(challenge)
@@ -365,7 +365,7 @@ module LERB
 
       class Output < BaseOutput
         def human
-          cert = OpenSSL::X509::Certificate.new(@response[:body])
+          cert = OpenSSL::X509::Certificate.new(@result[:body])
           cert.to_pem
         end
       end
@@ -463,8 +463,8 @@ module LERB
 
       def registration_uri
         @registration_uri ||= begin
-          response = execute(directory["new-reg"], resource: "new-reg")
-          response.location
+          result = execute(directory["new-reg"], resource: "new-reg")
+          result.location
         end
       end
   end
