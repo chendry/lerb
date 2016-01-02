@@ -161,33 +161,34 @@ module LERB
       end
   end
 
-  module Commands
-    class BaseOutput
-      def initialize(client, options, result)
-        @client = client
-        @options = options
-        @result = result
-      end
+  class OutputFormatter
+    def initialize(client, options, result)
+      @client = client
+      @options = options
+      @result = result
+    end
 
-      def to_s
-        case
-          when @options[:json] then json
-          when @options[:script] then script
-          else human
-        end
-      end
-
-      def json
-        @result.to_json
-      end
-
-      def human
-        json
-      end
-
-      def script
+    def to_s
+      case
+        when @options[:json] then json
+        when @options[:script] then script
+        else human
       end
     end
+
+    def json
+      @result.to_json
+    end
+
+    def human
+      json
+    end
+
+    def script
+    end
+  end
+
+  module Commands
 
     class NewReg
       def self.add_command_options(p)
@@ -203,7 +204,7 @@ module LERB
         client.new_reg(hash)
       end
 
-      class Output < BaseOutput
+      class Output < OutputFormatter
         def human
           case @result[:code]
             when "201" then "Your account has been created."
@@ -227,7 +228,7 @@ module LERB
         client.reg(hash)
       end
 
-      class Output < BaseOutput
+      class Output < OutputFormatter
       end
     end
 
@@ -240,7 +241,7 @@ module LERB
         client.new_authz(options[:domain])
       end
 
-      class Output < BaseOutput
+      class Output < OutputFormatter
         def human
           <<-END.unindent
             The authorization has been created.  In order to prove control over this
@@ -306,7 +307,7 @@ module LERB
         client.challenge(options[:uri], options[:type], options[:token])
       end
 
-      class Output < BaseOutput
+      class Output < OutputFormatter
       end
     end
 
@@ -320,7 +321,7 @@ module LERB
         client.new_cert(csr.to_der)
       end
 
-      class Output < BaseOutput
+      class Output < OutputFormatter
         def human
           cert = OpenSSL::X509::Certificate.new(@result[:body])
           cert.to_pem
@@ -335,7 +336,7 @@ module LERB
       def run(client, options)
       end
 
-      class Output < BaseOutput
+      class Output < OutputFormatter
       end
     end
   end
