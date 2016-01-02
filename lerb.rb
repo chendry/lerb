@@ -464,7 +464,7 @@ module LERB
       def registration_uri
         @registration_uri ||= begin
           result = execute(directory["new-reg"], resource: "new-reg")
-          result.location
+          result[:location]
         end
       end
   end
