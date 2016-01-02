@@ -25,12 +25,6 @@ class NilClass
   end
 end
 
-class Hash
-  def compact
-    reject { |k, v| v.nil? }
-  end
-end
-
 module LERB
 
   class CLI
@@ -240,11 +234,16 @@ module LERB
 
     class NewReg < BaseCommand
       def add_command_options(p)
-        p.add_req "--email=EMAIL", "email address to use for registration"
+        p.add_opt "--email=EMAIL", "contact email address"
+        p.add_opt "--agreement=URI", "agree to the terms of service"
       end
 
       def run
-        client.new_reg(contact: [ "mailto:#{options[:email]}" ] )
+        hash = { }
+        hash[:contact] = [ "mailto:#{options[:email]}" ] if options[:email]
+        hash[:agreement] = options[:agreement] if options[:agreement]
+
+        client.new_reg(hash)
       end
 
       class Output < BaseOutput
@@ -259,13 +258,14 @@ module LERB
 
     class Reg < BaseCommand
       def add_command_options(p)
+        p.add_opt "--email=EMAIL", "contact email address"
         p.add_opt "--agreement=URI", "agree to the terms of service"
       end
 
       def run
-        hash = {
-          agreement: options[:agreement]
-        }.compact
+        hash = { }
+        hash[:contact] = [ "mailto:#{options[:email]}" ] if options[:email]
+        hash[:agreement] = options[:agreement] if options[:agreement]
 
         client.reg(hash)
       end
@@ -396,8 +396,9 @@ module LERB
     end
 
     def new_reg(hash)
-      execute directory["new-reg"], hash.merge(resource: "new-reg")
-      agree_to_tos!
+      execute(directory["new-reg"], hash.merge(resource: "new-reg")).tap do
+        agree_to_tos!
+      end
     end
 
     def reg(hash)
@@ -437,7 +438,7 @@ module LERB
       result = reg({})
 
       current = result[:links]["terms-of-service"]
-      signed = JSON.parse(result[:body])["agreement"]
+      signed = result[:body]["agreement"]
 
       if signed != current
         reg(agreement: current)
