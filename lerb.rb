@@ -227,13 +227,7 @@ module LERB
       end
 
       def json
-        output = {
-          headers: @response.headers,
-          links: @response.links,
-          body: JSON.parse(@response.body)
-        }
-
-        output.to_json
+        @response.to_json
       end
 
       def human
@@ -255,7 +249,7 @@ module LERB
 
       class Output < BaseOutput
         def human
-          case @response.code
+          case @response[:code]
             when "201" then "Your account has been created."
             when "409" then "An account already exists for the supplied account key."
           end
@@ -302,7 +296,7 @@ module LERB
         private
 
           def challenges
-            JSON.parse(@response.body)["challenges"].map do |challenge|
+            JSON.parse(@response[:body])["challenges"].map do |challenge|
               case challenge["type"]
                 when /^dns/ then dns_challenge(challenge)
                 when /^http/ then http_challenge(challenge)
@@ -371,7 +365,7 @@ module LERB
 
       class Output < BaseOutput
         def human
-          cert = OpenSSL::X509::Certificate.new(@response.body)
+          cert = OpenSSL::X509::Certificate.new(@response[:body])
           cert.to_pem
         end
       end
@@ -444,7 +438,23 @@ module LERB
       def execute(uri, payload)
         request = Net::HTTP::Post.new(uri)
         request.body = LERB::JWS.new(@account_key, nonce, payload.to_json).build
-        LERB::Response.new(@http.request(request))
+        response = @http.request(request)
+
+        {
+          code: response.code,
+          headers: response.to_hash,
+          location: response["Location"],
+          links: links(response),
+          body: response.body
+        }
+      end
+
+      def links(response)
+        if links = response["Link"]
+          Hash[links.scan(/\<(.+?)\>\;rel="(.+?)"/)].invert
+        else
+          { }
+        end
       end
 
       def nonce
@@ -457,36 +467,6 @@ module LERB
           response.location
         end
       end
-  end
-
-  class Response
-    def initialize(response)
-      @response = response
-    end
-
-    def code
-      @response.code
-    end
-
-    def location
-      @response["Location"]
-    end
-
-    def body
-      @response.body
-    end
-
-    def headers
-      @response.to_hash
-    end
-
-    def links
-      if links = @response["Link"]
-        Hash[links.scan(/\<(.+?)\>\;rel="(.+?)"/)].invert
-      else
-        { }
-      end
-    end
   end
 
   class Helper
