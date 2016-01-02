@@ -62,6 +62,18 @@ module LERB
       @required = [ ]
     end
 
+    def self.parse(command_name, args)
+      parser = new.tap do |p|
+        p.add_common_options
+        p.separator ""
+        p.separator "#{command_name} command options:"
+        yield(p)
+        p.generate_banner(command_name)
+      end
+
+      parser.parse(args)
+    end
+
     def_delegators :@parser, :banner=, :separator
 
     def usage
@@ -102,7 +114,7 @@ module LERB
       @parser.banner = "usage: lerb.rb #{command_name} #{@required.join(" ")} [options]"
     end
 
-    def parse!(args)
+    def parse(args)
       @parser.parse(args)
 
       check_for_missing_arguments!
@@ -172,13 +184,9 @@ module LERB
 
         def options
           @options ||= begin
-            parser = MyOptionParser.new
-            parser.add_common_options
-            parser.separator ""
-            parser.separator "#{command_name} command options:"
-            add_command_options(parser)
-            parser.generate_banner(command_name)
-            parser.parse!(@args)
+            MyOptionParser.parse(command_name, @args) do |p|
+              add_command_options(p)
+            end
           end
         end
 
