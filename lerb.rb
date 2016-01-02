@@ -39,8 +39,17 @@ module LERB
 
         options = parser.parse(args)
 
-        command = klass.new(options)
-        command.output(command.run)
+        uri = "https://acme-staging.api.letsencrypt.org/directory"
+        account_key = LERB::AccountKey.new(options[:account_key])
+
+        client = LERB::Client.new(uri, account_key).tap do |c|
+          c.set_verbose if options[:verbose]
+        end
+
+        command = klass.new
+        result = command.run(client, options)
+
+        puts klass::Output.new(client, result, options).generate
       end
 
       private
@@ -149,38 +158,6 @@ module LERB
   end
 
   module Commands
-    class BaseCommand
-      def initialize(options)
-        @options = options
-      end
-
-      attr_reader :options
-
-      def run
-      end
-
-      def output(result)
-        puts self.class::Output.new(client, result, options).generate
-      end
-
-      private
-
-        def client
-          @client ||= begin
-            uri = "https://acme-staging.api.letsencrypt.org/directory"
-            account_key = LERB::AccountKey.new(options[:account_key])
-
-            LERB::Client.new(uri, account_key).tap do |c|
-              c.set_verbose if options[:verbose]
-            end
-          end
-        end
-
-        def command_name
-          self.class.name.split("::").last.split(/(?=[A-Z])/).join("-").downcase
-        end
-    end
-
     class BaseOutput
       def initialize(client, result, options)
         @client = client
@@ -208,13 +185,13 @@ module LERB
       end
     end
 
-    class NewReg < BaseCommand
+    class NewReg
       def self.add_command_options(p)
         p.opt "--email=EMAIL", "contact email address"
         p.opt "--agreement=URI", "agree to the terms of service"
       end
 
-      def run
+      def run(client, options)
         hash = { }
         hash[:contact] = [ "mailto:#{options[:email]}" ] if options[:email]
         hash[:agreement] = options[:agreement] if options[:agreement]
@@ -232,13 +209,13 @@ module LERB
       end
     end
 
-    class Reg < BaseCommand
+    class Reg
       def self.add_command_options(p)
         p.opt "--email=EMAIL", "contact email address"
         p.opt "--agreement=URI", "agree to the terms of service"
       end
 
-      def run
+      def run(client, options)
         hash = { }
         hash[:contact] = [ "mailto:#{options[:email]}" ] if options[:email]
         hash[:agreement] = options[:agreement] if options[:agreement]
@@ -250,12 +227,12 @@ module LERB
       end
     end
 
-    class NewAuthz < BaseCommand
+    class NewAuthz
       def self.add_command_options(p)
         p.req "--domain=DOMAIN", "domain name for which to request authorization"
       end
 
-      def run
+      def run(client, options)
         client.new_authz(options[:domain])
       end
 
@@ -314,14 +291,14 @@ module LERB
       end
     end
 
-    class Challenge < BaseCommand
+    class Challenge
       def self.add_command_options(p)
         p.req "--uri=URI", "challenge URI"
         p.req "--type=TYPE", "type of challenge"
         p.req "--token=TOKEN", "challenge token"
       end
 
-      def run
+      def run(client, options)
         client.challenge(options[:uri], options[:type], options[:token])
       end
 
@@ -329,12 +306,12 @@ module LERB
       end
     end
 
-    class NewCert < BaseCommand
+    class NewCert
       def self.add_command_options(p)
         p.req "--csr=CSR", "CSR in either PEM or DER format"
       end
 
-      def run
+      def run(client, options)
         csr = OpenSSL::X509::Request.new(File.read(options[:csr]))
         client.new_cert(csr.to_der)
       end
@@ -347,11 +324,11 @@ module LERB
       end
     end
 
-    class Cert < BaseCommand
+    class Cert
       def self.add_command_options(p)
       end
 
-      def run
+      def run(client, options)
       end
 
       class Output < BaseOutput
