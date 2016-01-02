@@ -34,22 +34,28 @@ end
 module LERB
 
   class CLI
-    def self.run(args)
-      klass = case command_name = args.shift
-        when "new-reg" then LERB::Commands::NewReg
-        when "reg" then LERB::Commands::Reg
-        when "new-authz" then LERB::Commands::NewAuthz
-        when "challenge" then LERB::Commands::Challenge
-        when "new-cert" then LERB::Commands::NewCert
-        when "cert" then LERB::Commands::Cert
-        when nil then  LERB::Commands::Help
-        else
-          puts "error: unknown command: #{command_name}\n\n"
-          LERB::Commands::Help
+    class <<self
+      def run(args)
+        command = command_class(args.shift).new(args)
+        command.output(command.run)
       end
 
-      command = klass.new(args)
-      command.output(command.run)
+      private
+
+        def command_class(name)
+          case name
+            when "new-reg" then LERB::Commands::NewReg
+            when "reg" then LERB::Commands::Reg
+            when "new-authz" then LERB::Commands::NewAuthz
+            when "challenge" then LERB::Commands::Challenge
+            when "new-cert" then LERB::Commands::NewCert
+            when "cert" then LERB::Commands::Cert
+            when nil then  LERB::Commands::Help
+            else
+              puts "error: unknown command: #{name}\n\n"
+              LERB::Commands::Help
+          end
+        end
     end
   end
 
