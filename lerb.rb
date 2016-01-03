@@ -77,7 +77,7 @@ module LERB
 
       def build_client
         uri = "https://acme-staging.api.letsencrypt.org/directory"
-        account_key = LERB::AccountKey.new(File.expand_path(@options[:account_key]))
+        account_key = LERB::AccountKey.new(@options[:account_key])
 
         LERB::Client.new(uri, account_key).tap do |c|
           c.set_verbose if @options[:verbose]
@@ -455,7 +455,7 @@ module LERB
 
   class AccountKey
     def initialize(path)
-      @path = path || AccountKey.default_path
+      @path = File.expand_path(path || AccountKey.default_path)
       load_key!
     end
 
