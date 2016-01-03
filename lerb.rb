@@ -419,7 +419,7 @@ module LERB
           headers: response.to_hash,
           location: response["Location"],
           links: links(response),
-          body: ( JSON.parse(response.body) rescue response.body )
+          body: ( JSON.parse(response.body) rescue Base64.urlsafe_encode64(response.body) )
         }
       end
 
