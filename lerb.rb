@@ -7,6 +7,7 @@ require 'json'
 require 'base64'
 require 'net/http'
 require 'optparse'
+require 'shellwords'
 
 class String
   def unindent
@@ -244,6 +245,22 @@ module LERB
 
             #{challenges.join("\n\n")}
           END
+        end
+
+        def script
+          vars = @result[:body]["challenges"].collect do |challenge|
+            type = challenge["type"].gsub('-', '_').upcase
+
+            [
+              [ "CHALLENGE_#{type}_TOKEN", challenge["token"] ],
+              [ "CHALLENGE_#{type}_KEYAPTH", @client.key_authorization(challenge["token"]) ],
+              [ "CHALLENGE_#{type}_URI", challenge["uri"] ]
+            ]
+          end.flatten(1)
+
+          vars.collect do |key, value|
+            "export #{key}=#{Shellwords.escape(value)};"
+          end.join("\n")
         end
 
         private
