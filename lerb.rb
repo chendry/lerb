@@ -323,9 +323,27 @@ module LERB
 
       class Output < OutputFormatter
         def human
-          cert = OpenSSL::X509::Certificate.new(@result[:body])
-          cert.to_pem
+          <<-END.unindent
+            issuer certificate:\n
+            #{ca_cert}\n
+            certificate:\n
+            #{cert}\n
+            certificate URI:\n
+            #{@result[:location]}\n
+          END
         end
+
+        private
+
+          def ca_cert
+            data = open(@result[:links]["up"]).read
+            OpenSSL::X509::Certificate.new(data).to_pem
+          end
+
+          def cert
+            data = Base64.decode64(@result[:body])
+            OpenSSL::X509::Certificate.new(data).to_pem
+          end
       end
     end
 
@@ -419,7 +437,7 @@ module LERB
           headers: response.to_hash,
           location: response["Location"],
           links: links(response),
-          body: ( JSON.parse(response.body) rescue Base64.urlsafe_encode64(response.body) )
+          body: ( JSON.parse(response.body) rescue Base64.encode64(response.body) )
         }
       end
 
