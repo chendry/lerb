@@ -80,7 +80,7 @@ module LERB
         account_key = LERB::AccountKey.new(@options[:account_key])
 
         LERB::Client.new(uri, account_key).tap do |c|
-          c.set_verbose if @options[:verbose]
+          c.set_debug if @options[:debug]
         end
       end
   end
@@ -97,7 +97,7 @@ module LERB
       opt "--account-key=PATH", "private RSA key used for authentication", "(defaults to ~/.lerb/account_key)"
       opt "--json", "output JSON responses from server"
       opt "--script", "output script-friendly export commands"
-      opt "--verbose", "verbose HTTP logging"
+      opt "--debug", "output HTTP debugging info"
 
       @parser.on "--version", "print version number" do
         puts "0.0.1"
@@ -367,7 +367,7 @@ module LERB
       @account_key = account_key
     end
 
-    def set_verbose
+    def set_debug
       @http.set_debug_output(STDOUT)
     end
 
