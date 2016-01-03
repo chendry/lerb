@@ -32,8 +32,7 @@ module LERB
 
     def run
       result = command_class.new.run(@client, @options)
-      output = command_class::Output.new(@client, @options, result)
-      puts output
+      command_class::Output.new(@client, @options, result).run
     end
 
     private
@@ -164,7 +163,7 @@ module LERB
       @result = result
     end
 
-    def to_s
+    def run
       case
         when @options[:json] then json
         when @options[:script] then script
@@ -202,7 +201,7 @@ module LERB
 
       class Output < OutputFormatter
         def human
-          case @result[:code]
+          puts case @result[:code]
             when "201" then "Your account has been created."
             when "409" then "An account already exists for the supplied account key."
           end
@@ -239,7 +238,7 @@ module LERB
 
       class Output < OutputFormatter
         def human
-          <<-END.unindent
+          puts <<-END.unindent
             The authorization has been created.  You must perform one of the following
             challenges to prove control of the domain:
 
@@ -248,19 +247,17 @@ module LERB
         end
 
         def script
-          vars = @result[:body]["challenges"].collect do |challenge|
+          sections = @result[:body]["challenges"].collect do |challenge|
             type = challenge["type"].gsub('-', '_').upcase
 
-            [
-              [ "CHALLENGE_#{type}_TOKEN", challenge["token"] ],
-              [ "CHALLENGE_#{type}_KEYAPTH", @client.key_authorization(challenge["token"]) ],
-              [ "CHALLENGE_#{type}_URI", challenge["uri"] ]
-            ]
-          end.flatten(1)
+            <<-END.unindent
+              CHALLENGE_#{type}_TOKEN=#{Shellwords.escape(challenge["token"])}
+              CHALLENGE_#{type}_KEYAPTH=#{Shellwords.escape(@client.key_authorization(challenge["token"]))}
+              CHALLENGE_#{type}_URI=#{Shellwords.escape(challenge["uri"])}
+            END
+          end
 
-          vars.collect do |key, value|
-            "export #{key}=#{Shellwords.escape(value)};"
-          end.join("\n")
+          puts sections.join("\n\n")
         end
 
         private
@@ -340,7 +337,7 @@ module LERB
 
       class Output < OutputFormatter
         def human
-          <<-END.unindent
+          puts <<-END.unindent
             issuer certificate:\n
             #{ca_cert}\n
             certificate:\n
