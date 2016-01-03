@@ -14,14 +14,10 @@ class String
     gsub(/^#{match(/^\s+/)}/, "").gsub("\n\n\n+", "\n\n").strip
   end
 
-  def blank?
-    strip.length == 0
-  end
-end
-
-class NilClass
-  def blank?
-    true
+  def strip_blank_account_key
+    lines.reject do |line|
+      line.match /^\s+--account-key=\s*(\/\/)?$/
+    end.join
   end
 end
 
@@ -82,7 +78,7 @@ module LERB
 
       def build_client
         uri = "https://acme-staging.api.letsencrypt.org/directory"
-        account_key = LERB::AccountKey.new(@options[:account_key])
+        account_key = LERB::AccountKey.new(File.expand_path(@options[:account_key]))
 
         LERB::Client.new(uri, account_key).tap do |c|
           c.set_verbose if @options[:verbose]
@@ -272,13 +268,11 @@ module LERB
           end
 
           def dns_challenge(challenge)
-            <<-END.unindent
-              No instructions available.
-            END
+            "No instructions available."
           end
 
           def http_challenge(challenge)
-            <<-END.unindent
+            <<-END.unindent.strip_blank_account_key
               Ensure that the following URI:
 
                 http://#{@options[:domain]}/.well-known/acme-challenge/#{challenge["token"]}
@@ -290,6 +284,7 @@ module LERB
               and then respond to the challenge by issuing the following command:
 
                 ./lerb.rb challenge \\
+                  --account-key=#{@options[:account_key]}
                   --uri=#{challenge["uri"]} \\
                   --type=#{challenge["type"]} \\
                   --token=#{challenge["token"]}
@@ -297,9 +292,7 @@ module LERB
           end
 
           def tls_sni_challenge(challenge)
-            <<-END.unindent
-              No instructions available.
-            END
+            "No instructions available."
           end
       end
     end
