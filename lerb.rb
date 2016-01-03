@@ -7,7 +7,6 @@ require 'json'
 require 'base64'
 require 'net/http'
 require 'optparse'
-require 'forwardable'
 
 class String
   def unindent
