@@ -247,17 +247,18 @@ module LERB
         end
 
         def script
-          sections = @result[:body]["challenges"].collect do |challenge|
-            type = challenge["type"].gsub('-', '_').upcase
+          vars = { }
 
-            <<-END.unindent
-              CHALLENGE_#{type}_TOKEN=#{Shellwords.escape(challenge["token"])}
-              CHALLENGE_#{type}_KEYAPTH=#{Shellwords.escape(@client.key_authorization(challenge["token"]))}
-              CHALLENGE_#{type}_URI=#{Shellwords.escape(challenge["uri"])}
-            END
+          @result[:body]["challenges"].each do |c|
+            vars["challenge_#{c["type"]}_token"] = c["token"]
+            vars["challenge_#{c["type"]}_keyauth"] = @client.key_authorization(c["token"])
+            vars["challenge_#{c["type"]}_uri"] = c["uri"]
           end
 
-          puts sections.join("\n\n")
+          vars.each do |k, v|
+            k = k.gsub('-', '_').upcase
+            puts "LERB_#{Shellwords.escape(k)}=#{Shellwords.escape(v)}"
+          end
         end
 
         private
