@@ -244,8 +244,8 @@ module LERB
       class Output < OutputFormatter
         def human
           <<-END.unindent
-            The authorization has been created.  In order to prove control over this
-            domain, you must perform one of the following challenges:
+            The authorization has been created.  You must perform one of the following
+            challenges to prove control of the domain:
 
             #{challenges.join("\n\n")}
           END
@@ -255,42 +255,50 @@ module LERB
 
           def challenges
             @result[:body]["challenges"].map do |challenge|
-              case challenge["type"]
-                when /^dns/ then dns_challenge(challenge)
-                when /^http/ then http_challenge(challenge)
-                when /^tls-sni/ then tls_sni_challenge(challenge)
-              end
+              header(challenge) + "\n\n" + instructions(challenge)
+            end
+          end
+
+          def header(challenge)
+            "---[ #{challenge["type"]} ]".ljust(78, "-")
+          end
+
+          def instructions(challenge)
+            case challenge["type"]
+              when /^dns/ then dns_challenge(challenge)
+              when /^http/ then http_challenge(challenge)
+              when /^tls-sni/ then tls_sni_challenge(challenge)
             end
           end
 
           def dns_challenge(challenge)
             <<-END.unindent
-              DNS:
-                - No description yet.
+              No instructions available.
             END
           end
 
           def http_challenge(challenge)
             <<-END.unindent
-              HTTP:
-                Place a file on your web server such that a request to:
-                  http://#{@options[:domain]}/.well-known/acme-challenge/#{challenge["token"]}
+              Ensure that the following URI:
 
-                returns the following data:
-                  #{@client.key_authorization(challenge["token"])}
+                http://#{@options[:domain]}/.well-known/acme-challenge/#{challenge["token"]}
 
-                Then respond to the challenge by issuing the following command:
-                  ./lerb.rb challenge \\
-                    --uri=#{challenge["uri"]} \\
-                    --type=#{challenge["type"]} \\
-                    --token=#{challenge["token"]}
+              returns the following data:
+
+                #{@client.key_authorization(challenge["token"])}
+
+              and then respond to the challenge by issuing the following command:
+
+                ./lerb.rb challenge \\
+                  --uri=#{challenge["uri"]} \\
+                  --type=#{challenge["type"]} \\
+                  --token=#{challenge["token"]}
             END
           end
 
           def tls_sni_challenge(challenge)
             <<-END.unindent
-              TLS-SNI:
-                - No description yet.
+              No instructions available.
             END
           end
       end
