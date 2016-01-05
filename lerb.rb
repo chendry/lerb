@@ -180,7 +180,16 @@ module LERB
     end
 
     def script
+      script_vars.collect do |k, v|
+        "export LERB_#{Shellwords.escape(k.upcase.gsub('-', '_'))}=#{Shellwords.escape(v)}"
+      end.join("\n")
     end
+
+    private
+
+      def script_vars
+        { }
+      end
   end
 
   module Commands
@@ -246,18 +255,13 @@ module LERB
           END
         end
 
-        def script
-          vars = { }
-
-          @result[:body]["challenges"].each do |c|
-            vars["challenge_#{c["type"]}_token"] = c["token"]
-            vars["challenge_#{c["type"]}_keyauth"] = @client.key_authorization(c["token"])
-            vars["challenge_#{c["type"]}_uri"] = c["uri"]
-          end
-
-          vars.each do |k, v|
-            k = k.gsub('-', '_').upcase
-            puts "export LERB_#{Shellwords.escape(k)}=#{Shellwords.escape(v)}"
+        def script_vars
+          { }.tap do |vars|
+            @result[:body]["challenges"].each do |c|
+              vars["challenge_#{c["type"]}_token"] = c["token"]
+              vars["challenge_#{c["type"]}_keyauth"] = @client.key_authorization(c["token"])
+              vars["challenge_#{c["type"]}_uri"] = c["uri"]
+            end
           end
         end
 
