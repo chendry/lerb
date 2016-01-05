@@ -54,7 +54,7 @@ module LERB
 
       def show_help
         puts <<-END.unindent
-          usage: lerb.rb command [options]
+          usage: lerb command [options]
 
           where command is one of:
             new-reg         register for a new account
@@ -65,7 +65,7 @@ module LERB
             new-cert        request a certificate
             cert            download certificate
 
-          run lerb.rb command --help for command-specific information.
+          run lerb command --help for command-specific information.
         END
       end
 
@@ -116,7 +116,7 @@ module LERB
 
       yield(self)
 
-      @parser.banner = "usage: lerb.rb #{command_name} #{@required.join(" ")} [options]"
+      @parser.banner = "usage: lerb #{command_name} #{@required.join(" ")} [options]"
     end
 
     def opt(long, *args)
@@ -303,7 +303,7 @@ module LERB
 
               and then respond to the challenge by issuing the following command:
 
-                ./lerb.rb challenge \\
+                ./lerb challenge \\
                   --account-key=#{@options[:account_key]}
                   --uri=#{challenge["uri"]} \\
                   --type=#{challenge["type"]} \\
