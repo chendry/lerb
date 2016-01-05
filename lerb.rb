@@ -379,6 +379,13 @@ module LERB
           END
         end
 
+        def script_vars
+          {
+            certificate_uri: @result[:location],
+            issue_certificate_uri: @result[:links]["up"]
+          }
+        end
+
         private
 
           def ca_cert
