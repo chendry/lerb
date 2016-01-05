@@ -43,6 +43,7 @@ module LERB
           when "reg" then LERB::Commands::Reg
           when "new-authz" then LERB::Commands::NewAuthz
           when "challenge" then LERB::Commands::Challenge
+          when "authz" then LERB::Commands::Authz
           when "new-cert" then LERB::Commands::NewCert
           when "cert" then LERB::Commands::Cert
           else
@@ -60,6 +61,7 @@ module LERB
             reg             get account registration details
             new-authz       authorize account to manage certificates for a domain
             challenge       respond to a challenge to prove control of a domain
+            authz           poll for the status of an existing authorization
             new-cert        request a certificate
             cert            download certificate
 
@@ -181,7 +183,7 @@ module LERB
 
     def script
       script_vars.collect do |k, v|
-        "export LERB_#{Shellwords.escape(k.upcase.gsub('-', '_'))}=#{Shellwords.escape(v)}"
+        "export LERB_#{Shellwords.escape(k.to_s.upcase.gsub('-', '_'))}=#{Shellwords.escape(v)}"
       end.join("\n")
     end
 
@@ -315,6 +317,24 @@ module LERB
       end
     end
 
+    class Authz
+      def self.add_command_options(p)
+        p.req "--uri=URI", "URI of the authorization to poll"
+      end
+
+      def run(client, options)
+        client.authz(options[:uri])
+      end
+
+      class Output < OutputFormatter
+        def script_vars
+          {
+            challenge_status: @result[:body]["status"]
+          }
+        end
+      end
+    end
+
     class Challenge
       def self.add_command_options(p)
         p.req "--uri=URI", "challenge URI"
@@ -327,6 +347,12 @@ module LERB
       end
 
       class Output < OutputFormatter
+        def script_vars
+          {
+            challenge_status: @result[:body]["status"],
+            challenge_uri: @result[:location]
+          }
+        end
       end
     end
 
@@ -410,6 +436,11 @@ module LERB
         }
     end
 
+    def authz(uri)
+      request = Net::HTTP::Get.new(uri)
+      build_result(@http.request(request))
+    end
+
     def challenge(uri, type, token)
       agree_to_tos!
       execute uri,
@@ -449,8 +480,10 @@ module LERB
       def execute(uri, payload)
         request = Net::HTTP::Post.new(uri)
         request.body = LERB::JWS.new(@account_key, nonce, payload.to_json).build
-        response = @http.request(request)
+        build_result(@http.request(request))
+      end
 
+      def build_result(response)
         {
           code: response.code,
           headers: response.to_hash,
