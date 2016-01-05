@@ -164,7 +164,7 @@ module LERB
     end
 
     def run
-      case
+      puts case
         when @options[:json] then json
         when @options[:script] then script
         else human
@@ -201,7 +201,7 @@ module LERB
 
       class Output < OutputFormatter
         def human
-          puts case @result[:code]
+          case @result[:code]
             when "201" then "Your account has been created."
             when "409" then "An account already exists for the supplied account key."
           end
@@ -238,7 +238,7 @@ module LERB
 
       class Output < OutputFormatter
         def human
-          puts <<-END.unindent
+          <<-END.unindent
             The authorization has been created.  You must perform one of the following
             challenges to prove control of the domain:
 
@@ -338,7 +338,7 @@ module LERB
 
       class Output < OutputFormatter
         def human
-          puts <<-END.unindent
+          <<-END.unindent
             issuer certificate:\n
             #{ca_cert}\n
             certificate:\n
