@@ -257,7 +257,7 @@ module LERB
 
           vars.each do |k, v|
             k = k.gsub('-', '_').upcase
-            puts "LERB_#{Shellwords.escape(k)}=#{Shellwords.escape(v)}"
+            puts "export LERB_#{Shellwords.escape(k)}=#{Shellwords.escape(v)}"
           end
         end
 
