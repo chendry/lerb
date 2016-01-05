@@ -382,7 +382,7 @@ module LERB
         def script_vars
           {
             certificate_uri: @result[:location],
-            issue_certificate_uri: @result[:links]["up"]
+            certificate_chain_uri: @result[:links]["up"]
           }
         end
 
