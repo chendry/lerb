@@ -329,7 +329,8 @@ module LERB
       class Output < OutputFormatter
         def script_vars
           {
-            challenge_status: @result[:body]["status"]
+            challenge_status: @result[:body]["status"],
+            challenge_uri: @result[:location]
           }
         end
       end
