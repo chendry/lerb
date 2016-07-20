@@ -78,7 +78,7 @@ module LERB
       end
 
       def build_client
-        uri = "https://acme-staging.api.letsencrypt.org/directory"
+        uri = "https://acme-v01.api.letsencrypt.org/directory"
         account_key = LERB::AccountKey.new(@options[:account_key])
 
         LERB::Client.new(uri, account_key).tap do |c|
